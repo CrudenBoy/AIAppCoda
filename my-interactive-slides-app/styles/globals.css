@@ -1,0 +1,39 @@
+.slide-container {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  padding: 0 0.5rem;
+}
+
+.text-column {
+  flex: 1;
+  flex-basis: 50%;
+  padding: 40px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  background: white;
+  margin: 20px;
+  border-radius: 15px;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+}
+
+.image-column {
+  flex: 1;
+  flex-basis: 50%;
+  padding: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.text-column.full-width {
+  flex-basis: 100% !important;
+  max-width: 100% !important;
+}
+
+.image-column.hidden {
+  display: none !important;
+}

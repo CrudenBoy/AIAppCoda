@@ -1,0 +1,15 @@
+{
+  "name": "my-coda-pack",
+  "version": "1.0.0",
+  "description": "A new Coda Pack",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@codahq/packs-sdk": "^1.9.7"
+  }
+}
