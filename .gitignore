@@ -1,0 +1,18 @@
+# Dependencies
+/node_modules
+
+# Build output
+/build
+/dist
+/.coda-pack
+
+# Environment variables
+.env
+.env.*
+!.env.example
+
+# OS-specific
+.DS_Store
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
