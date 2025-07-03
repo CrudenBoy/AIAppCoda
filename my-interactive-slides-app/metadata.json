@@ -1,0 +1,6 @@
+{
+  "name": "Knowledge Base Interactive Slides & Chat",
+  "description": "Upload a knowledge base from a CSV file with associated images, generate presentation-style slides, engage in an AI-powered chat, create tasks, and summarize discussions. Customize AI's tone via a password-protected admin section. Presentation slides can be read aloud using Text-to-Speech.",
+  "requestFramePermissions": [],
+  "prompt": ""
+}
