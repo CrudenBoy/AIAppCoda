@@ -1,5 +1,6 @@
 # Dependencies
-/node_modules
+# ignore any dir named “node_modules” at any depth
+node_modules/
 
 # Build output
 /build
