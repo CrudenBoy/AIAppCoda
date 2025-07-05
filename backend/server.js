@@ -3,6 +3,7 @@ const express = require('express');
 const db = require('./db'); // Import our database module
 const cors = require('cors');
 const { GoogleGenerativeAI } = require("@google/generative-ai");
+const fetch = require('node-fetch');
 
 // Initialize the Google Generative AI client
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
@@ -230,6 +231,62 @@ app.post('/responses', async (req, res) => {
     res.status(500).json({ message: 'Failed to create response.' });
   }
 });
+
+// --- AI Gateway Endpoint ---
+app.post('/api/v1/chat/:agent_slug', masterAuth, async (req, res) => {
+  const { agent_slug } = req.params;
+  const userRequestData = req.body;
+
+  if (!agent_slug) {
+    return res.status(400).json({ message: 'Agent slug is required.' });
+  }
+
+  try {
+    // 1. Look up the agent in the database
+    const agentResult = await db.query('SELECT do_agent_uuid FROM ai_agents WHERE agent_slug = $1', [agent_slug]);
+
+    if (agentResult.rows.length === 0) {
+      return res.status(404).json({ message: `Agent with slug '${agent_slug}' not found.` });
+    }
+
+    const do_agent_uuid = agentResult.rows[0].do_agent_uuid;
+
+    // 2. Prepare and proxy the request to DigitalOcean GenAI Platform
+    const doApiUrl = 'https://api.digitalocean.com/v2/genai/chat';
+    const doApiKey = process.env.DO_API_KEY;
+
+    if (!doApiKey) {
+      console.error('DigitalOcean API key (DO_API_KEY) is not set in environment variables.');
+      return res.status(500).json({ message: 'Server configuration error.' });
+    }
+
+    // Construct the payload for the DO API, ensuring the model is set correctly
+    const proxyPayload = {
+      ...userRequestData,
+      model: do_agent_uuid, // Use the fetched UUID as the model
+    };
+
+    const response = await fetch(doApiUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${doApiKey}`,
+      },
+      body: JSON.stringify(proxyPayload),
+    });
+
+    // 3. Stream the response back to the client
+    res.status(response.status);
+    response.body.pipe(res);
+
+  } catch (error) {
+    console.error(`Error processing chat request for agent ${agent_slug}:`, error);
+    if (!res.headersSent) {
+      res.status(500).json({ message: 'Failed to proxy chat request.' });
+    }
+  }
+});
+
 
 app.listen(port, () => {
   console.log(`Server listening on port ${port}`);
