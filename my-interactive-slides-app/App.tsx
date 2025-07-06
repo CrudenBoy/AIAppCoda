@@ -2,7 +2,6 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import type { Slide, ChatMessage, Task, ResponseEntry, TaskFormData } from './types';
 import { APP_TITLE, DEFAULT_CHAT_SYSTEM_INSTRUCTION, DEFAULT_SLIDE_KEY_POINTS_SYSTEM_INSTRUCTION, ADMIN_PASSWORD as INITIAL_ADMIN_PASSWORD, APP_VERSION } from './constants';
 import Modal from './components/Modal';
-import ApiKeyModal from './components/ApiKeyModal';
 import { useAppStore } from './store';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -20,11 +19,9 @@ export type ScreenView = 'mainMenu' | 'presentation' | 'tasks' | 'responses' | '
 
 
 const App: React.FC = () => {
-  const { userApiKey, setUserApiKey, globalError, setGlobalError } = useAppStore();
+  const { globalError, setGlobalError } = useAppStore();
 
   const [currentScreen, setCurrentScreen] = useState<ScreenView>('mainMenu');
-  const [isApiKeyModalOpen, setIsApiKeyModalOpen] = useState(false);
-  const hasPromptedForApiKeyRef = useRef(false);
 
   const [slides, setSlides] = useState<Slide[]>([]);
   const [currentSlideIndex, setCurrentSlideIndex] = useState(0);
@@ -70,21 +67,6 @@ const App: React.FC = () => {
   
   useState<string | null>(null);
 
-  useEffect(() => {
-    const initializeKey = () => {
-      if (!userApiKey && !hasPromptedForApiKeyRef.current) {
-        const storedKey = localStorage.getItem('geminiApiKey');
-        if (storedKey) {
-          setUserApiKey(storedKey);
-          // AI Client initialization is now backend-only
-        } else {
-          setIsApiKeyModalOpen(true);
-          hasPromptedForApiKeyRef.current = true;
-        }
-      }
-    };
-    initializeKey();
-  }, [userApiKey]);
 
   useEffect(() => {
     const fetchContent = async () => {
@@ -128,18 +110,6 @@ const App: React.FC = () => {
     fetchContent();
   }, []);
 
-  const handleApiKeySave = (newKey: string) => {
-    if (!newKey.trim()) {
-        setGlobalError("API Key cannot be empty.");
-        return;
-    }
-    setGlobalError(null);
-    setUserApiKey(newKey);
-    localStorage.setItem('geminiApiKey', newKey);
-    // AI Client initialization is now backend-only
-    setIsApiKeyModalOpen(false);
-  };
-  
   useEffect(() => {
     const populateVoiceList = () => {
       const voices = window.speechSynthesis.getVoices();
@@ -310,9 +280,9 @@ const App: React.FC = () => {
 
 const renderScreen = () => {
     const sharedScreenProps = {
-      disabled: isLoadingSlides || !userApiKey,
+      disabled: isLoadingSlides,
       slidesAvailable: slides.length > 0,
-      isApiKeySet: !!userApiKey,
+      isApiKeySet: true,
     };
 
     switch (currentScreen) {
@@ -333,9 +303,9 @@ const renderScreen = () => {
           <TasksScreen
             tasks={tasks}
             onDownloadTasks={downloadTasks}
-            navigation={{ navigateTo: setCurrentScreen, openApiKeyModal: () => setIsApiKeyModalOpen(true) }}
+            navigation={{ navigateTo: setCurrentScreen, openApiKeyModal: () => {} }}
             onEditTask={handleOpenTaskForm}
-            isApiKeySet={!!userApiKey}
+            isApiKeySet={true}
           />
         );
       case 'responses':
@@ -343,8 +313,8 @@ const renderScreen = () => {
           <ResponsesScreen
             responses={responseTableData}
             onDownloadResponses={downloadResponses}
-            navigation={{ navigateTo: setCurrentScreen, openApiKeyModal: () => setIsApiKeyModalOpen(true) }}
-            isApiKeySet={!!userApiKey}
+            navigation={{ navigateTo: setCurrentScreen, openApiKeyModal: () => {} }}
+            isApiKeySet={true}
           />
         );
       case 'admin':
@@ -362,9 +332,9 @@ const renderScreen = () => {
             isSpeaking={isTTSSpeaking}
             presentationMode={presentationMode}
             currentTTSType={null}
-            navigation={{ navigateTo: setCurrentScreen, openApiKeyModal: () => setIsApiKeyModalOpen(true) }}
+            navigation={{ navigateTo: setCurrentScreen, openApiKeyModal: () => {} }}
             onAdminPasswordChange={setAdminPassword}
-            isApiKeySet={!!userApiKey}
+            isApiKeySet={true}
           />
         );
       case 'mainMenu':
@@ -375,7 +345,7 @@ const renderScreen = () => {
             navigateTo={setCurrentScreen}
             isAdminAuthenticated={isAdminAuthenticated}
             handleOpenAdminScreen={handleOpenAdminScreen}
-            openApiKeyModal={() => setIsApiKeyModalOpen(true)}
+            openApiKeyModal={() => {}}
             tasks={tasks}
             responses={responseTableData}
             {...sharedScreenProps}
@@ -390,13 +360,6 @@ const renderScreen = () => {
     <div className="min-h-screen flex flex-col text-gray-900 bg-gray-100">
       <header className="bg-indigo-700 text-white p-4 shadow-md">
         <h1 className="text-2xl font-bold text-center">{APP_TITLE}</h1>
-         <button
-            onClick={() => setIsApiKeyModalOpen(true)}
-            className="absolute top-4 right-4 text-xs bg-indigo-500 hover:bg-indigo-400 text-white font-semibold py-1 px-2 rounded"
-            title={userApiKey ? "Change API Key" : "Set Gemini API Key"}
-          >
-            {userApiKey ? "Gemini API Key Set" : "Set Gemini API Key"}
-          </button>
       </header>
 
       <main className="flex-grow container mx-auto p-4">
@@ -414,12 +377,6 @@ const renderScreen = () => {
         </div>
       )}
 
-      <ApiKeyModal
-        isOpen={isApiKeyModalOpen}
-        onClose={() => setIsApiKeyModalOpen(false)}
-        onSave={handleApiKeySave}
-        currentApiKey={userApiKey || ""}
-      />
 
       <Modal isOpen={showAdminPasswordModal} onClose={handleAdminModalClose} title="Admin Access">
         <div className="space-y-4">
