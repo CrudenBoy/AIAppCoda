@@ -3,6 +3,7 @@ const express = require('express');
 const db = require('./db'); // Import our database module
 const cors = require('cors');
 const { GoogleGenerativeAI } = require("@google/generative-ai");
+const fetch = require('node-fetch');
 
 // Initialize the Google Generative AI client
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
@@ -42,11 +43,11 @@ const masterAuth = async (req, res, next) => {
   const token = authHeader.split(' ')[1];
 
   try {
-    const result = await db.query('SELECT * FROM users WHERE "apiToken" = $1', [token]);
+    const result = await db.query('SELECT "userId", email, credits FROM users WHERE "apiToken" = $1', [token]);
     if (result.rows.length === 0) {
       return res.status(403).json({ message: 'Authentication error: Invalid API token.' });
     }
-    req.user = result.rows[0]; // Attach user data to the request
+    req.user = result.rows[0]; // Attach user object { userId, email, credits } to the request
     next();
   } catch (err) {
     console.error('Authentication database error:', err);
@@ -64,6 +65,18 @@ app.get('/', (req, res) => {
 // User Identification Route
 app.get('/me', masterAuth, (req, res) => {
   res.json({ email: req.user.email });
+});
+
+// --- User Usage and Upgrade Endpoints ---
+
+// Get User Credit Usage
+app.get('/v1/user/usage', masterAuth, (req, res) => {
+  res.json({ credits: req.user.credits });
+});
+
+// Upgrade User Plan (Placeholder)
+app.post('/v1/user/upgrade', masterAuth, (req, res) => {
+  res.status(200).json({ message: "Upgrade path not yet implemented." });
 });
 
 // Get Tasks Route
@@ -230,6 +243,119 @@ app.post('/responses', async (req, res) => {
     res.status(500).json({ message: 'Failed to create response.' });
   }
 });
+
+// --- AI Gateway Endpoint ---
+app.post('/v1/chat/:agent_slug', masterAuth, async (req, res) => {
+  const { agent_slug } = req.params;
+  const userRequestData = req.body;
+  const { userId, credits } = req.user; // User object from masterAuth
+
+  if (!agent_slug) {
+    return res.status(400).json({ message: 'Agent slug is required.' });
+  }
+
+  // --- Task 10.3: Credit Check (Pre-Proxy) ---
+  // Before making the fetch call, check if the user has enough credits.
+  if (credits <= 0) {
+    return res.status(429).json({ error: "Insufficient credits. Please upgrade your plan." });
+  }
+
+  try {
+    // 1. Look up the agent in the database to get its UUID and internal ID
+    const agentQuery = 'SELECT agent_id, do_agent_uuid FROM ai_agents WHERE agent_slug = $1';
+    const agentResult = await db.query(agentQuery, [agent_slug]);
+
+    if (agentResult.rows.length === 0) {
+      return res.status(404).json({ message: `Agent with slug '${agent_slug}' not found.` });
+    }
+
+    const { agent_id, do_agent_uuid } = agentResult.rows[0];
+
+    // 2. Prepare and proxy the request to DigitalOcean GenAI Platform
+    const doApiUrl = process.env.DO_GENAI_API_URL;
+    const doApiKey = process.env.DO_API_KEY;
+
+    if (!doApiUrl || !doApiKey) {
+      console.error('DO_GENAI_API_URL or DO_API_KEY is not set in environment variables.');
+      return res.status(500).json({ message: 'Server configuration error.' });
+    }
+
+    // Securely construct the payload, only forwarding expected fields.
+    const { messages, stream, temperature } = userRequestData;
+    const proxyPayload = {
+      messages,
+      stream,
+      temperature,
+      model: do_agent_uuid, // Use the fetched UUID as the model
+    };
+
+    const response = await fetch(doApiUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${doApiKey}`,
+      },
+      body: JSON.stringify(proxyPayload),
+    });
+
+    // Error handling for the proxied request.
+    if (!response.ok) {
+      const errorBody = await response.text();
+      console.error(`DigitalOcean API error: ${response.status} ${response.statusText}`, errorBody);
+      return res.status(response.status).json({ message: 'Failed to proxy request to AI provider.' });
+    }
+
+    // 3. Handle response: stream or full JSON
+    if (stream) {
+      // For streaming responses, we pipe directly to the client.
+      // Note: Real-time credit deduction for streams is more complex and not implemented here.
+      // It would require consuming the stream, counting tokens, and then re-streaming.
+      res.status(response.status);
+      response.body.pipe(res);
+    } else {
+      // For non-streaming responses, we can process the result and deduct credits.
+      const aiResponse = await response.json();
+
+      // --- Task 10.3: Logging and Decrementing (Post-Proxy) ---
+      const total_tokens = aiResponse.usage?.total_tokens;
+
+      // Only proceed if we have a token count
+      if (total_tokens && total_tokens > 0) {
+        const cost = total_tokens; // Cost model: 1 credit = 1 token
+
+        // Note: For production, these two operations should be wrapped in a database transaction
+        // to ensure atomicity. If the credit update fails, the usage log should be rolled back.
+        try {
+          // 1. Log the API usage
+          const logQuery = `
+            INSERT INTO api_usage_logs (user_id, agent_id, tokens_used, cost)
+            VALUES ($1, $2, $3, $4)
+          `;
+          await db.query(logQuery, [userId, agent_id, total_tokens, cost]);
+
+          // 2. Decrement the user's credits
+          const updateQuery = 'UPDATE users SET credits = credits - $1 WHERE "userId" = $2';
+          await db.query(updateQuery, [cost, userId]);
+
+        } catch (dbError) {
+          // If database operations fail, log the error but still return the AI response to the user.
+          // This is a graceful failure mode. The user gets their result, but their credits aren't deducted.
+          console.error('Database error during credit deduction:', dbError);
+        }
+      }
+
+      // Send the final AI response to the client
+      res.status(200).json(aiResponse);
+    }
+
+  } catch (error) {
+    console.error(`Error processing chat request for agent ${agent_slug}:`, error);
+    if (!res.headersSent) {
+      res.status(500).json({ message: 'Failed to proxy chat request.' });
+    }
+  }
+});
+
 
 app.listen(port, () => {
   console.log(`Server listening on port ${port}`);
