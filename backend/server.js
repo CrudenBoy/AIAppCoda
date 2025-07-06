@@ -251,6 +251,7 @@ app.get('/v1/chat/:agent_slug', (req, res) => {
 
 // --- AI Gateway Endpoint ---
 app.post('/v1/chat/:agent_slug', masterAuth, async (req, res) => {
+  console.log('[DEBUG] POST /v1/chat/:agent_slug handler started.');
   const { agent_slug } = req.params;
   const userRequestData = req.body;
   const { userId, credits } = req.user; // User object from masterAuth
@@ -265,8 +266,10 @@ app.post('/v1/chat/:agent_slug', masterAuth, async (req, res) => {
     return res.status(429).json({ error: "Insufficient credits. Please upgrade your plan." });
   }
 
+  console.log(`[DEBUG] Credit check passed for user ${userId}. Credits: ${credits}`);
   try {
     // 1. Look up the agent in the database to get its UUID and internal ID
+    console.log(`[DEBUG] Looking up agent with slug: ${agent_slug}`);
     const agentQuery = 'SELECT agent_id, do_agent_uuid FROM ai_agents WHERE agent_slug = $1';
     const agentResult = await db.query(agentQuery, [agent_slug]);
 
@@ -275,6 +278,7 @@ app.post('/v1/chat/:agent_slug', masterAuth, async (req, res) => {
     }
 
     const { agent_id, do_agent_uuid } = agentResult.rows[0];
+    console.log(`[DEBUG] Agent found: agent_id=${agent_id}, do_agent_uuid=${do_agent_uuid}`);
 
     // 2. Prepare and proxy the request to DigitalOcean GenAI Platform
     const doApiUrl = process.env.DO_GENAI_API_URL;
@@ -294,6 +298,7 @@ app.post('/v1/chat/:agent_slug', masterAuth, async (req, res) => {
       model: do_agent_uuid, // Use the fetched UUID as the model
     };
 
+    console.log(`[DEBUG] Proxying request to DO GenAI Platform with UUID: ${do_agent_uuid}`);
     const response = await fetch(doApiUrl, {
       method: 'POST',
       headers: {
