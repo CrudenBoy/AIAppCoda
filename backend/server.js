@@ -244,6 +244,11 @@ app.post('/responses', async (req, res) => {
   }
 });
 
+// --- Temporary Debugging Route ---
+app.get('/v1/chat/:agent_slug', (req, res) => {
+  res.status(200).json({ message: `GET request received for agent: ${req.params.agent_slug}` });
+});
+
 // --- AI Gateway Endpoint ---
 app.post('/v1/chat/:agent_slug', masterAuth, async (req, res) => {
   const { agent_slug } = req.params;
