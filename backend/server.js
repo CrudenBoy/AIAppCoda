@@ -161,28 +161,29 @@ app.post('/app_content', masterAuth, async (req, res) => {
     await client.query('BEGIN');
     await client.query('DELETE FROM app_content WHERE "docId" = $1', [docId]);
 
-    const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+    const processedRows = await Promise.all(
+      contentRows.map(async (row) => {
+        const { knowledge, dialogueinstruction, presentationinstruction } = row;
 
-    const processedRows = await Promise.all(contentRows.map(async (row) => {
-      const { knowledge, dialogueinstruction, presentationinstruction } = row;
+        // Step 1: Use the 'knowledge' field to generate the 'dialogue'
+        const dialoguePrompt = `${dialogueinstruction}: "${knowledge}"`;
+        const dialogue = await callGeminiAPI(dialoguePrompt);
 
-      // Step 1: Generate Dialogue
-      const dialoguePrompt = `${dialogueinstruction}: "${knowledge}"`;
-      const dialogueResult = await model.generateContent(dialoguePrompt);
-      const dialogue = dialogueResult.response.text();
+        // Step 2: Use the new 'dialogue' to generate the 'presentationtext'
+        const presentationPrompt = `${presentationinstruction}: "${dialogue}"`;
+        const presentationtext = await callGeminiAPI(presentationPrompt);
 
-      // Step 2: Generate Presentation Text
-      const presentationPrompt = `${presentationinstruction}: "${dialogue}"`;
-      const presentationResult = await model.generateContent(presentationPrompt);
-      const presentationtext = presentationResult.response.text();
+        // Verification Step: Log both generated fields to the console
+        console.log({ dialogue, presentationtext });
 
-      // Step 3: Augment the Row
-      return {
-        ...row,
-        dialogue,
-        presentationtext,
-      };
-    }));
+        // Return the row, augmented with the new dialogue and presentationtext.
+        return {
+          ...row,
+          dialogue,
+          presentationtext,
+        };
+      })
+    );
 
     const insertPromises = processedRows.map(row => {
       const { contentid, section, knowledge, image, displayorder, dialogue, presentationtext, dialogueinstruction, presentationinstruction } = row;
