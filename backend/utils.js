@@ -30,7 +30,17 @@ async function callGeminiAPI(prompt) {
       throw new Error(`HTTP error! status: ${response.status}`);
     }
 
-    return await response.json();
+    const data = await response.json();
+
+    // Safely access the nested text property
+    const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
+
+    if (text) {
+      return text;
+    } else {
+      console.error('Unexpected Gemini API response structure:', JSON.stringify(data, null, 2));
+      return ''; // Return an empty string if the structure is not as expected
+    }
   } catch (error) {
     console.error('Error calling Gemini API:', error);
     throw error;
