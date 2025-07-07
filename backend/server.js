@@ -64,24 +64,24 @@ app.get('/', (req, res) => {
 });
 
 // User Identification Route
-app.get('/me', masterAuth, (req, res) => {
+app.get('/api/me', masterAuth, (req, res) => {
   res.json({ email: req.user.email });
 });
 
 // --- User Usage and Upgrade Endpoints ---
 
 // Get User Credit Usage
-app.get('/v1/user/usage', masterAuth, (req, res) => {
+app.get('/api/v1/user/usage', masterAuth, (req, res) => {
   res.json({ credits: req.user.credits });
 });
 
 // Upgrade User Plan (Placeholder)
-app.post('/v1/user/upgrade', masterAuth, (req, res) => {
+app.post('/api/v1/user/upgrade', masterAuth, (req, res) => {
   res.status(200).json({ message: "Upgrade path not yet implemented." });
 });
 
 // Get Tasks Route
-app.get('/tasks', masterAuth, async (req, res) => {
+app.get('/api/tasks', masterAuth, async (req, res) => {
   const { docId } = req.query;
   try {
     const result = await db.query('SELECT * FROM tasks WHERE "docId" = $1', [docId]);
@@ -93,7 +93,7 @@ app.get('/tasks', masterAuth, async (req, res) => {
 });
 
 // Get Responses Route
-app.get('/responses', masterAuth, async (req, res) => {
+app.get('/api/responses', masterAuth, async (req, res) => {
   const { docId } = req.query;
   try {
     const result = await db.query('SELECT * FROM responses WHERE "docId" = $1', [docId]);
@@ -105,7 +105,7 @@ app.get('/responses', masterAuth, async (req, res) => {
 });
 
 // GET /app_content - Fetches all slide content for a given docId, sorted by displayOrder
-app.get('/app_content', async (req, res) => {
+app.get('/api/app_content', async (req, res) => {
   const { docId } = req.query;
 
   if (!docId) {
@@ -148,7 +148,7 @@ app.get('/app_content', async (req, res) => {
 });
 
 // POST /app_content - Receives data from the Coda "SendAppContent" action
-app.post('/app_content', masterAuth, async (req, res) => {
+app.post('/api/app_content', masterAuth, async (req, res) => {
   const { docId, contentRows } = req.body;
 
   if (!docId || !Array.isArray(contentRows) || contentRows.length === 0) {
@@ -208,8 +208,35 @@ app.post('/app_content', masterAuth, async (req, res) => {
   }
 });
 
+// PUT /app_content/instructions - Updates dialogue and presentation instructions for a docId
+app.put('/api/app_content/instructions', masterAuth, async (req, res) => {
+  const { docId, dialogueInstruction, presentationInstruction } = req.body;
+
+  if (!docId || !dialogueInstruction || !presentationInstruction) {
+    return res.status(400).json({ message: 'docId, dialogueInstruction, and presentationInstruction are required.' });
+  }
+
+  try {
+    const query = `
+      UPDATE app_content
+      SET "dialogueInstruction" = $1, "presentationInstruction" = $2
+      WHERE "docId" = $3
+    `;
+    const { rowCount } = await db.pool.query(query, [dialogueInstruction, presentationInstruction, docId]);
+
+    if (rowCount === 0) {
+      return res.status(404).json({ message: `No content found for docId: ${docId} to update.` });
+    }
+
+    res.status(200).json({ message: `Successfully updated instructions for ${rowCount} rows.` });
+  } catch (error) {
+    console.error('Failed to update instructions:', error);
+    res.status(500).json({ message: 'Failed to update instructions in database.' });
+  }
+});
+
 // POST /tasks - Receives a new task from the frontend AI app
-app.post('/tasks', async (req, res) => {
+app.post('/api/tasks', async (req, res) => {
   const { docId, taskId, title, description, status } = req.body;
   if (!docId || !taskId || !title) {
     return res.status(400).json({ message: 'docId, taskId, and title are required.' });
@@ -228,7 +255,7 @@ app.post('/tasks', async (req, res) => {
 });
 
 // POST /responses - Receives a new response from the frontend AI app
-app.post('/responses', async (req, res) => {
+app.post('/api/responses', async (req, res) => {
   const { docId, responseId, content, taskId } = req.body;
   if (!docId || !responseId || !content) {
     return res.status(400).json({ message: 'docId, responseId, and content are required.' });
@@ -247,7 +274,7 @@ app.post('/responses', async (req, res) => {
 });
 
 // --- AI Gateway Endpoint ---
-app.post('/v1/chat/:agent_slug', masterAuth, async (req, res) => {
+app.post('/api/v1/chat/:agent_slug', masterAuth, async (req, res) => {
   const { agent_slug } = req.params;
   const userRequestData = req.body;
   const { userId, credits } = req.user; // User object from masterAuth
