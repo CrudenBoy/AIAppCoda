@@ -8,7 +8,7 @@ interface PresentationScreenProps {
   onNextSlide: () => void;
   onPrevSlide: () => void;
   onExit: () => void;
-  ttsManager: TTSManager | null;
+  ttsManager: TTSManager;
   isTTSSpeaking: boolean;
   setIsTTSSpeaking: (isSpeaking: boolean) => void;
 }
@@ -29,8 +29,6 @@ export const PresentationScreen: React.FC<PresentationScreenProps> = ({
   const { title, imageFilename, slideText, dialogue } = currentSection;
 
   const handlePresentSlideButton = () => {
-    if (!ttsManager) return;
-
     if (isTTSSpeaking) {
       ttsManager.pause();
       setIsTTSSpeaking(false);
