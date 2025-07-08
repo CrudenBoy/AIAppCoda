@@ -6,6 +6,7 @@ interface HamburgerMenuProps {
   currentScreen: ScreenView;
   navigation: {
     navigateTo: (screen: ScreenView) => void;
+    handleOpenAdminScreen: () => void;
   };
 }
 
@@ -74,6 +75,16 @@ const HamburgerMenu: React.FC<HamburgerMenuProps> = ({ currentScreen, navigation
                 {link.label}
               </button>
             ))}
+           <button
+               onClick={() => {
+                 navigation.handleOpenAdminScreen();
+                 setIsOpen(false);
+               }}
+               className={`block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 hover:text-gray-900`}
+               role="menuitem"
+             >
+               Settings
+             </button>
           </div>
         </div>
       )}

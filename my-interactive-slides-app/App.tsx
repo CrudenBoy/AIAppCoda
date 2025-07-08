@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import type { Slide, ChatMessage, Task, ResponseEntry, TaskFormData } from './types';
-import { APP_TITLE, DEFAULT_CHAT_SYSTEM_INSTRUCTION, DEFAULT_SLIDE_KEY_POINTS_SYSTEM_INSTRUCTION, ADMIN_PASSWORD as INITIAL_ADMIN_PASSWORD, APP_VERSION } from './constants';
+import { APP_TITLE, ADMIN_PASSWORD as INITIAL_ADMIN_PASSWORD, APP_VERSION } from './constants';
 import Modal from './components/Modal';
 import { useAppStore } from './store';
 import ReactMarkdown from 'react-markdown';
@@ -19,7 +19,7 @@ export type ScreenView = 'mainMenu' | 'presentation' | 'tasks' | 'responses' | '
 
 
 const App: React.FC = () => {
-  const { globalError, setGlobalError } = useAppStore();
+  const { globalError, setGlobalError, userApiKey, isApiKeySet } = useAppStore();
 
   const [currentScreen, setCurrentScreen] = useState<ScreenView>('mainMenu');
 
@@ -29,8 +29,6 @@ const App: React.FC = () => {
   const [chatMessages] = useState<ChatMessage[]>([]);
 
   const [tasks, setTasks] = useState<Task[]>([]);
-  const [chatSystemInstruction, setChatSystemInstruction] = useState<string>(DEFAULT_CHAT_SYSTEM_INSTRUCTION);
-  const [slideSystemInstruction, setSlideSystemInstruction] = useState<string>(DEFAULT_SLIDE_KEY_POINTS_SYSTEM_INSTRUCTION);
   const [adminPassword, setAdminPassword] = useState<string>(INITIAL_ADMIN_PASSWORD);
 
   const [isLoadingSlides, setIsLoadingSlides] = useState(false);
@@ -138,7 +136,7 @@ const App: React.FC = () => {
   const reinitializeChat = useCallback(() => {
     // Chat session management is now backend-only. This function is stubbed.
     console.log("Chat re-initialization is disabled.");
-  }, [chatSystemInstruction, chatMessages, setGlobalError]);
+  }, [chatMessages, setGlobalError]);
 
   useEffect(() => { reinitializeChat(); }, [reinitializeChat]);
 
@@ -157,16 +155,6 @@ const App: React.FC = () => {
       setCurrentSlideIndex((prevIndex: number) => prevIndex - 1);
     }
   }, [currentSlideIndex]);
-
-  const handleChatSystemInstructionChange = (newInstruction: string) => setChatSystemInstruction(newInstruction);
-  const handleSlideSystemInstructionChange = (newInstruction: string) => setSlideSystemInstruction(newInstruction);
-
-  const handleSaveChatSystemInstruction = () => {
-    reinitializeChat();
-    alert("Chat system instructions saved.");
-  };
-
-  const handleSaveSlideSystemInstruction = () => alert("Slide key points system instructions saved.");
 
   const handleOpenAdminScreen = () => {
     if (isAdminAuthenticated) {
@@ -282,7 +270,7 @@ const renderScreen = () => {
     const sharedScreenProps = {
       disabled: isLoadingSlides,
       slidesAvailable: slides.length > 0,
-      isApiKeySet: true,
+      isApiKeySet: isApiKeySet,
     };
 
     switch (currentScreen) {
@@ -303,9 +291,9 @@ const renderScreen = () => {
           <TasksScreen
             tasks={tasks}
             onDownloadTasks={downloadTasks}
-            navigation={{ navigateTo: setCurrentScreen, openApiKeyModal: () => {} }}
+            navigation={{ navigateTo: setCurrentScreen, openApiKeyModal: () => {}, handleOpenAdminScreen }}
             onEditTask={handleOpenTaskForm}
-            isApiKeySet={true}
+            isApiKeySet={isApiKeySet}
           />
         );
       case 'responses':
@@ -313,28 +301,23 @@ const renderScreen = () => {
           <ResponsesScreen
             responses={responseTableData}
             onDownloadResponses={downloadResponses}
-            navigation={{ navigateTo: setCurrentScreen, openApiKeyModal: () => {} }}
-            isApiKeySet={true}
+            navigation={{ navigateTo: setCurrentScreen, openApiKeyModal: () => {}, handleOpenAdminScreen }}
+            isApiKeySet={isApiKeySet}
           />
         );
       case 'admin':
         return (
           <AdminScreen
-            chatSystemInstruction={chatSystemInstruction}
-            onChatSystemInstructionChange={handleChatSystemInstructionChange}
-            onSaveChatSystemInstruction={handleSaveChatSystemInstruction}
-            slideSystemInstruction={slideSystemInstruction}
-            onSlideSystemInstructionChange={handleSlideSystemInstructionChange}
-            onSaveSlideSystemInstruction={handleSaveSlideSystemInstruction}
+            masterApiKey={userApiKey || ''}
             ttsVoices={ttsVoices}
             selectedVoiceURI={selectedVoiceURI}
             onSelectedVoiceURIChange={setSelectedVoiceURI}
             isSpeaking={isTTSSpeaking}
             presentationMode={presentationMode}
             currentTTSType={null}
-            navigation={{ navigateTo: setCurrentScreen, openApiKeyModal: () => {} }}
+            navigation={{ navigateTo: setCurrentScreen, openApiKeyModal: () => {}, handleOpenAdminScreen }}
             onAdminPasswordChange={setAdminPassword}
-            isApiKeySet={true}
+            isApiKeySet={isApiKeySet}
           />
         );
       case 'mainMenu':
