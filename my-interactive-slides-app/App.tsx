@@ -128,10 +128,6 @@ const App: React.FC = () => {
     };
   }, [selectedVoiceURI]);
 
-  useEffect(() => {
-    const voice = ttsVoices.find(v => v.voiceURI === selectedVoiceURI);
-    ttsManager.current = new TTSManager(voice || undefined);
-  }, [selectedVoiceURI, ttsVoices]);
 
   const reinitializeChat = useCallback(() => {
     // Chat session management is now backend-only. This function is stubbed.
