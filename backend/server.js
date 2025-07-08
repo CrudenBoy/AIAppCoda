@@ -159,18 +159,27 @@ app.post('/api/app_content', masterAuth, async (req, res) => {
 
   try {
     await client.query('BEGIN');
+
+    // Fetch global prompts from the presentation_settings table
+    const settingsQuery = 'SELECT "dialogueInstruction", "presentationInstruction" FROM presentation_settings LIMIT 1';
+    const settingsResult = await client.query(settingsQuery);
+    if (settingsResult.rows.length === 0) {
+      throw new Error('Presentation settings not found.');
+    }
+    const { dialogueInstruction, presentationInstruction } = settingsResult.rows[0];
+
     await client.query('DELETE FROM app_content WHERE "docId" = $1', [docId]);
 
     const processedRows = await Promise.all(
       contentRows.map(async (row) => {
-        const { knowledge, dialogueinstruction, presentationinstruction } = row;
+        const { knowledge } = row; // Removed instruction de-structuring
 
         // Step 1: Use the 'knowledge' field to generate the 'dialogue'
-        const dialoguePrompt = `${dialogueinstruction}: "${knowledge}"`;
+        const dialoguePrompt = `${dialogueInstruction}: "${knowledge}"`; // Use global instruction
         const dialogue = await callGeminiAPI(dialoguePrompt);
 
         // Step 2: Use the new 'dialogue' to generate the 'presentationtext'
-        const presentationPrompt = `${presentationinstruction}: "${dialogue}"`;
+        const presentationPrompt = `${presentationInstruction}: "${dialogue}"`; // Use global instruction
         const presentationtext = await callGeminiAPI(presentationPrompt);
 
         // Verification Step: Log both generated fields to the console
@@ -186,12 +195,12 @@ app.post('/api/app_content', masterAuth, async (req, res) => {
     );
 
     const insertPromises = processedRows.map(row => {
-      const { contentid, section, knowledge, image, displayorder, dialogue, presentationtext, dialogueinstruction, presentationinstruction } = row;
+      const { contentid, section, knowledge, image, displayorder, dialogue, presentationtext } = row; // Removed instructions
       const query = `
-        INSERT INTO app_content ("contentId", "docId", "section", "knowledge", "image", "displayOrder", "dialogue", "presentationtext", "dialogueInstruction", "presentationInstruction")
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+        INSERT INTO app_content ("contentId", "docId", "section", "knowledge", "image", "displayOrder", "dialogue", "presentationtext")
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
       `;
-      const values = [contentid, docId, section, knowledge, image, displayorder, dialogue, presentationtext, dialogueinstruction, presentationinstruction];
+      const values = [contentid, docId, section, knowledge, image, displayorder, dialogue, presentationtext]; // Removed instructions
       return client.query(query, values);
     });
 
