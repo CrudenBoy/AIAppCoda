@@ -235,6 +235,53 @@ app.put('/api/app_content/instructions', masterAuth, async (req, res) => {
   }
 });
 
+// --- Presentation Settings Endpoints ---
+
+// GET /api/presentation/settings - Fetches the global presentation settings
+app.get('/api/presentation/settings', masterAuth, async (req, res) => {
+  try {
+    const query = 'SELECT * FROM presentation_settings LIMIT 1';
+    const { rows } = await db.pool.query(query);
+
+    if (rows.length === 0) {
+      return res.status(404).json({ message: 'Presentation settings not found.' });
+    }
+
+    res.status(200).json(rows[0]);
+  } catch (error) {
+    console.error('Failed to fetch presentation settings:', error);
+    res.status(500).json({ message: 'Failed to retrieve presentation settings from database.' });
+  }
+});
+
+// PUT /api/presentation/settings - Updates the global presentation settings
+app.put('/api/presentation/settings', masterAuth, async (req, res) => {
+  const { dialogueInstruction, presentationInstruction } = req.body;
+
+  if (!dialogueInstruction || !presentationInstruction) {
+    return res.status(400).json({ message: 'dialogueInstruction and presentationInstruction are required.' });
+  }
+
+  try {
+    const query = `
+      UPDATE presentation_settings
+      SET "dialogueInstruction" = $1, "presentationInstruction" = $2
+    `;
+    // Note: We are not using a WHERE clause because we are assuming only one row exists.
+    const { rowCount } = await db.pool.query(query, [dialogueInstruction, presentationInstruction]);
+
+    if (rowCount === 0) {
+      // This case might happen if the table is empty. We could also choose to INSERT here.
+      return res.status(404).json({ message: 'No settings row found to update.' });
+    }
+
+    res.status(200).json({ message: `Successfully updated presentation settings.` });
+  } catch (error) {
+    console.error('Failed to update presentation settings:', error);
+    res.status(500).json({ message: 'Failed to update presentation settings in database.' });
+  }
+});
+
 // POST /tasks - Receives a new task from the frontend AI app
 app.post('/api/tasks', async (req, res) => {
   const { docId, taskId, title, description, status } = req.body;
