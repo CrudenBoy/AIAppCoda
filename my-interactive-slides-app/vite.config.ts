@@ -12,6 +12,14 @@ export default defineConfig(({ mode }) => {
         alias: {
           '@': path.resolve(__dirname, '.'),
         }
-      }
+      },
+      server: {
+        proxy: {
+          '/api': {
+            target: 'https://monkfish-app-pcc2z.ondigitalocean.app',
+            changeOrigin: true,
+          },
+        },
+      },
     };
 });

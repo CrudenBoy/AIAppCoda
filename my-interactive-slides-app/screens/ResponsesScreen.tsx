@@ -10,6 +10,7 @@ interface ResponsesScreenProps {
   navigation: {
     navigateTo: (screen: ScreenView) => void;
     openApiKeyModal: () => void;
+    handleOpenAdminScreen: () => void;
   };
   isApiKeySet: boolean; // New prop
 }
