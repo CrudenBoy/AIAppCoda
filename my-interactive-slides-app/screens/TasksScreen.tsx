@@ -10,6 +10,7 @@ interface TasksScreenProps {
   navigation: {
     navigateTo: (screen: ScreenView) => void;
     openApiKeyModal: () => void;
+    handleOpenAdminScreen: () => void;
   };
   onEditTask: (task: Task) => void;
   isApiKeySet: boolean; // New prop

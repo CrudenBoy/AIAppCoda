@@ -1,16 +1,11 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import type { ScreenView } from '../App';
 import SystemInstructionEditor from '../components/SystemInstructionEditor';
 import HamburgerMenu from '../components/HamburgerMenu';
 
 interface AdminScreenProps {
-  chatSystemInstruction: string;
-  onChatSystemInstructionChange: (instruction: string) => void;
-  onSaveChatSystemInstruction: () => void;
-  slideSystemInstruction: string;
-  onSlideSystemInstructionChange: (instruction: string) => void;
-  onSaveSlideSystemInstruction: () => void;
+  masterApiKey: string;
   ttsVoices: SpeechSynthesisVoice[];
   selectedVoiceURI: string | null;
   onSelectedVoiceURIChange: (uri: string) => void;
@@ -20,6 +15,7 @@ interface AdminScreenProps {
   navigation: {
     navigateTo: (screen: ScreenView) => void;
     openApiKeyModal: () => void;
+    handleOpenAdminScreen: () => void;
   };
   currentAdminPassword?: string;
   onAdminPasswordChange: (newPass: string) => void;
@@ -27,12 +23,7 @@ interface AdminScreenProps {
 }
 
 const AdminScreen: React.FC<AdminScreenProps> = ({
-  chatSystemInstruction,
-  onChatSystemInstructionChange,
-  onSaveChatSystemInstruction,
-  slideSystemInstruction,
-  onSlideSystemInstructionChange,
-  onSaveSlideSystemInstruction,
+  masterApiKey,
   ttsVoices,
   selectedVoiceURI,
   onSelectedVoiceURIChange,
@@ -46,6 +37,86 @@ const AdminScreen: React.FC<AdminScreenProps> = ({
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [passwordChangeMessage, setPasswordChangeMessage] = useState<{type: 'success' | 'error', text: string} | null>(null);
+
+  // State for system instructions
+  const [dialogueInstruction, setDialogueInstruction] = useState('');
+  const [presentationInstruction, setPresentationInstruction] = useState('');
+
+  // State for API interactions
+  const [isLoading, setIsLoading] = useState(true); // Start with loading true to fetch initial data
+  const [saveStatus, setSaveStatus] = useState<{type: 'success' | 'error', message: string} | null>(null);
+
+  useEffect(() => {
+    const fetchSettings = async () => {
+      if (!isApiKeySet) {
+        setIsLoading(false);
+        setSaveStatus({ type: 'error', message: 'Set API Key to load settings.' });
+        return;
+      }
+      setIsLoading(true);
+      setSaveStatus(null);
+      try {
+        const response = await fetch('/api/presentation/settings', {
+          headers: {
+            'Authorization': `Bearer ${masterApiKey}`,
+          },
+        });
+
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({ message: 'An unknown error occurred.' }));
+          throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
+        }
+
+        const data = await response.json();
+        setDialogueInstruction(data.dialogueInstruction || '');
+        setPresentationInstruction(data.presentationInstruction || '');
+      } catch (error) {
+        console.error("Failed to fetch settings:", error);
+        const errorMessage = error instanceof Error ? error.message : 'Failed to load settings. Please try again.';
+        setSaveStatus({ type: 'error', message: errorMessage });
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchSettings();
+  }, [isApiKeySet, masterApiKey]);
+
+  const handleSave = async () => {
+    if (!isApiKeySet) {
+        setSaveStatus({ type: 'error', message: 'Set API Key to save instructions.' });
+        return;
+    }
+    setIsLoading(true);
+    setSaveStatus(null);
+    try {
+        const response = await fetch('/api/presentation/settings', {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${masterApiKey}`,
+            },
+            body: JSON.stringify({
+                dialogueInstruction,
+                presentationInstruction,
+            }),
+        });
+
+        if (!response.ok) {
+            const errorData = await response.json().catch(() => ({ message: 'An unknown error occurred.' }));
+            throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
+        }
+
+        setSaveStatus({ type: 'success', message: 'Settings saved successfully!' });
+        setTimeout(() => setSaveStatus(null), 5000); // Clear message after 5 seconds
+    } catch (error) {
+        console.error("Failed to save settings:", error);
+        const errorMessage = error instanceof Error ? error.message : 'Failed to save settings. Please try again.';
+        setSaveStatus({ type: 'error', message: errorMessage });
+    } finally {
+        setIsLoading(false);
+    }
+  };
 
   const handleChangePassword = (e: React.FormEvent) => {
     e.preventDefault();
@@ -78,40 +149,57 @@ const AdminScreen: React.FC<AdminScreenProps> = ({
       </div>
       
       <div className="p-4 space-y-6">
-        <div>
-          <h3 className="text-lg font-semibold mb-2 text-gray-700">Chatbot System Instruction</h3>
-          <SystemInstructionEditor
-            instruction={chatSystemInstruction}
-            onInstructionChange={onChatSystemInstructionChange}
-            disabled={isSpeaking || !isApiKeySet}
-          />
-          <button
-              onClick={onSaveChatSystemInstruction}
-              className="mt-2 px-4 py-2 bg-blue-600 text-white font-semibold rounded-md hover:bg-blue-700 disabled:bg-gray-400 transition duration-150"
-              disabled={isSpeaking || !isApiKeySet}
-          >
-              Save Chatbot System Instructions
-          </button>
-          {!isApiKeySet && <p className="text-xs text-red-500 mt-1">Set API Key to save instructions and enable AI features.</p>}
+        <div className="p-4 border border-gray-300 rounded-lg bg-white shadow">
+            <h3 className="text-lg font-semibold mb-2 text-gray-700">Global AI System Prompts</h3>
+            
+            {saveStatus && (
+                <div className={`p-3 mb-4 rounded-md text-sm ${saveStatus.type === 'success' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
+                    {saveStatus.message}
+                </div>
+            )}
+            
+            {isLoading && !saveStatus && <p className="text-blue-500">Loading settings...</p>}
+
+            {!isApiKeySet && (
+                <div className="p-3 mb-4 rounded-md text-sm bg-red-100 text-red-800">
+                    Set API Key to load and save instructions.
+                </div>
+            )}
+
+            <div className="mt-4">
+                <h4 className="text-md font-semibold mb-2 text-gray-600">Chatbot System Instruction</h4>
+                <SystemInstructionEditor
+                    instruction={dialogueInstruction}
+                    onInstructionChange={setDialogueInstruction}
+                    disabled={isLoading || isSpeaking || !isApiKeySet}
+                />
+            </div>
+
+            <div className="mt-6">
+                <h4 className="text-md font-semibold mb-2 text-gray-600">Slide Key Points System Instruction</h4>
+                <p className="text-xs text-gray-500 mb-2">This instruction guides the AI in generating key bullet points from your slide dialogue. Be very specific about the desired output format (e.g., use hyphens, plain text only).</p>
+                <SystemInstructionEditor
+                    instruction={presentationInstruction}
+                    onInstructionChange={setPresentationInstruction}
+                    disabled={isLoading || isSpeaking || !isApiKeySet}
+                />
+            </div>
+
+            <button
+                onClick={handleSave}
+                className="mt-4 px-6 py-2 bg-blue-600 text-white font-semibold rounded-md hover:bg-blue-700 disabled:bg-gray-400 transition duration-150 flex items-center"
+                disabled={isLoading || isSpeaking || !isApiKeySet}
+            >
+                {isLoading && (
+                    <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                )}
+                {isLoading ? 'Please wait...' : 'Save All System Instructions'}
+            </button>
         </div>
 
-        <div className="mt-6">
-          <h3 className="text-lg font-semibold mb-2 text-gray-700">Slide Key Points System Instruction</h3>
-           <p className="text-xs text-gray-500 mb-2">This instruction guides the AI in generating key bullet points from your slide dialogue. Be very specific about the desired output format (e.g., use hyphens, plain text only).</p>
-          <SystemInstructionEditor
-            instruction={slideSystemInstruction}
-            onInstructionChange={onSlideSystemInstructionChange}
-            disabled={isSpeaking || !isApiKeySet}
-          />
-          <button
-              onClick={onSaveSlideSystemInstruction}
-              className="mt-2 px-4 py-2 bg-blue-600 text-white font-semibold rounded-md hover:bg-blue-700 disabled:bg-gray-400 transition duration-150"
-              disabled={isSpeaking || !isApiKeySet}
-          >
-              Save Slide Key Points Instructions
-          </button>
-          {!isApiKeySet && <p className="text-xs text-red-500 mt-1">Set API Key to save instructions and enable AI features.</p>}
-        </div>
 
         {ttsVoices.length > 0 && (
           <div className="p-4 border border-gray-300 rounded-lg bg-white shadow">
