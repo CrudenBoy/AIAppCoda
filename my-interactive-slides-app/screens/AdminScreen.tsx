@@ -167,7 +167,8 @@ const AdminScreen: React.FC<AdminScreenProps> = ({
             )}
 
             <div className="mt-4">
-                <h4 className="text-md font-semibold mb-2 text-gray-600">Chatbot System Instruction</h4>
+                <h4 className="text-md font-semibold mb-2 text-gray-600">Slide Dialogue System Instruction</h4>
+                <p className="text-xs text-gray-500 mb-2">This instruction guides the AI in generating the main dialogue or speech for each slide.</p>
                 <SystemInstructionEditor
                     instruction={dialogueInstruction}
                     onInstructionChange={setDialogueInstruction}
@@ -177,7 +178,7 @@ const AdminScreen: React.FC<AdminScreenProps> = ({
 
             <div className="mt-6">
                 <h4 className="text-md font-semibold mb-2 text-gray-600">Slide Key Points System Instruction</h4>
-                <p className="text-xs text-gray-500 mb-2">This instruction guides the AI in generating key bullet points from your slide dialogue. Be very specific about the desired output format (e.g., use hyphens, plain text only).</p>
+                <p className="text-xs text-gray-500 mb-2">This instruction guides the AI in generating a concise, bulleted list of key points from the main slide dialogue. Be very specific about the desired output format (e.g., use hyphens, plain text only).</p>
                 <SystemInstructionEditor
                     instruction={presentationInstruction}
                     onInstructionChange={setPresentationInstruction}

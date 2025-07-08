@@ -12,11 +12,11 @@ interface AppState {
 }
 
 export const useAppStore = create<AppState>((set) => ({
-  userApiKey: null,
-  isApiKeySet: false,
+  userApiKey: 'user-token-123',
+  isApiKeySet: true,
   aiClient: null,
   globalError: null,
-  setUserApiKey: (key) => set({ userApiKey: key, isApiKeySet: !!key }),
+  setUserApiKey: (key) => set({ userApiKey: key, isApiKeySet: true }),
   setAiClient: (client) => set({ aiClient: client }),
   setGlobalError: (error) => set({ globalError: error }),
 }));
