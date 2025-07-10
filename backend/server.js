@@ -1,10 +1,15 @@
 require("dotenv").config();
+// backend/server.js
+console.log("DATABASE_URL from .env:", process.env.DATABASE_URL); // <-- ADD THIS LINE
+// ... rest of the file
 const express = require('express');
 const db = require('./db'); // Import our database module
 const cors = require('cors');
 const { GoogleGenerativeAI } = require("@google/generative-ai");
 const fetch = require('node-fetch');
 const { callGeminiAPI } = require('./utils');
+const tasksRouter = require('./routes/tasks');
+const responsesRouter = require('./routes/responses');
 
 // Initialize the Google Generative AI client
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
@@ -291,43 +296,8 @@ app.put('/api/presentation/settings', masterAuth, async (req, res) => {
   }
 });
 
-// POST /tasks - Receives a new task from the frontend AI app
-app.post('/api/tasks', async (req, res) => {
-  const { docId, taskId, title, description, status } = req.body;
-  if (!docId || !taskId || !title) {
-    return res.status(400).json({ message: 'docId, taskId, and title are required.' });
-  }
-  try {
-    const query = `
-      INSERT INTO tasks ("docId", "taskId", "title", "description", "status", "createdAt")
-      VALUES ($1, $2, $3, $4, $5, NOW())
-    `;
-    await db.pool.query(query, [docId, taskId, title, description, status || 'New']);
-    res.status(201).json({ message: 'Task created successfully.' });
-  } catch (err) {
-    console.error('Error creating task:', err);
-    res.status(500).json({ message: 'Failed to create task.' });
-  }
-});
-
-// POST /responses - Receives a new response from the frontend AI app
-app.post('/api/responses', async (req, res) => {
-  const { docId, responseId, content, taskId } = req.body;
-  if (!docId || !responseId || !content) {
-    return res.status(400).json({ message: 'docId, responseId, and content are required.' });
-  }
-  try {
-    const query = `
-      INSERT INTO responses ("docId", "responseId", "content", "taskId", "submittedAt")
-      VALUES ($1, $2, $3, $4, NOW())
-    `;
-    await db.pool.query(query, [docId, responseId, content, taskId]);
-    res.status(201).json({ message: 'Response created successfully.' });
-  } catch (err) {
-    console.error('Error creating response:', err);
-    res.status(500).json({ message: 'Failed to create response.' });
-  }
-});
+app.use('/api/tasks', masterAuth, tasksRouter);
+app.use('/api/responses', masterAuth, responsesRouter);
 
 // --- AI Gateway Endpoint ---
 app.post('/api/v1/chat/:agent_slug', masterAuth, async (req, res) => {

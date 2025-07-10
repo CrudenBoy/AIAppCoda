@@ -1,16 +1,29 @@
 import * as coda from "@codahq/packs-sdk";
 import { TaskSchema, ResponseSchema } from "./schemas";
 
+// Verify that the schemas you just edited are being loaded correctly:
+console.log("▶️ Loaded TaskSchema.idProperty:", TaskSchema.idProperty);
+console.log("▶️ Loaded ResponseSchema.idProperty:", ResponseSchema.idProperty);
+
 export const pack = coda.newPack();
+
+// Allow your API domain so fetcher.fetch will actually fire.
+pack.addNetworkDomain("monkfish-app-pcc2z.ondigitalocean.app");
+
 
 // IMPORTANT: We will replace this with your real app URL later.
 const AppDomain = "monkfish-app-pcc2z.ondigitalocean.app";
 
+
 pack.setUserAuthentication({
   type: coda.AuthenticationType.HeaderBearerToken,
-  instructionsUrl: `https://<your-app-url>/settings/api`,
+  // Point at your real settings page (or docs) on your app
+  instructionsUrl: `https://${AppDomain}/settings/api`,
+  // Tell Coda which host to send the bearer token to
+  networkDomain: AppDomain,
   getConnectionName: async function (context) {
-    const response = await context.fetcher.fetch({
+    // Cast to any so TS knows about fetcher
+    const response = await (context as any).fetcher.fetch({
       method: "GET",
       url: `https://${AppDomain}/api/me`,
     });
@@ -18,48 +31,91 @@ pack.setUserAuthentication({
   },
 });
 
-pack.addNetworkDomain(AppDomain);
+// the following "foo" block is dugging code to test sync tables that has been added. It will need deleted after the system is working
+import { SyncExecutionContext } from "@codahq/packs-sdk";
 
 pack.addSyncTable({
-  name: "Tasks",
+  name: "foo",
+  identityName: "Foo",
   schema: TaskSchema,
+  formula: {
+    name: "SyncFoo",
+    description: "Fetches test Foo rows for minimal repro",
+    parameters: [],
+    execute: async function (_args, context) {
+      console.log("🔍 SYNC-foo INITIAL called");
+      return { result: [ { taskId: "X", title: "Foo" } ] };
+    },
+    // @ts-ignore
+    executeUpdate: async function (_args, context) {
+      console.log("🔄 SYNC-foo UPDATE called");
+      return { result: [ { taskId: "Y", title: "FooUpdate" } ] };
+    },
+  },
+})
+
+pack.addSyncTable({
+  name: "tasks",
   identityName: "Task",
+  schema: TaskSchema,
   formula: {
     name: "SyncTasks",
     description: "Pulls tasks from the web app.",
     parameters: [],
-    execute: async function ([], context) {
-      const docId = context.document.id;
+    // Full-sync
+    execute: async function([], context) {
+      const docId = (context as any).document.id;
       const url = coda.withQueryParams(`https://${AppDomain}/api/tasks`, { docId });
-      const response = await context.fetcher.fetch({ method: "GET", url: url, cacheTtlSecs: 0 });
+      const response = await context.fetcher.fetch({ method: "GET", url, cacheTtlSecs: 0 });
+      console.log("🔍 SYNC-tasks payload:", JSON.stringify(response.body.tasks, null, 2));
+      return { result: response.body.tasks };
+    },
+    // Incremental-sync (just re-calls execute)
+
+    // 2) Incremental-refresh:
+    executeUpdate: async function([], context) {
+      const docId = (context as any).document.id;
+      const url = coda.withQueryParams(
+        `https://${AppDomain}/api/tasks`, { docId });
+      const response = await (context as any).fetcher.fetch({method:"GET", url, cacheTtlSecs:0});
       return { result: response.body.tasks };
     },
   },
 });
 
+
 pack.addSyncTable({
-  name: "Responses",
-  schema: ResponseSchema,
+  name: "responses",
   identityName: "Response",
+  schema: ResponseSchema,
   formula: {
     name: "SyncResponses",
     description: "Pulls responses from the web app.",
     parameters: [],
-    execute: async function ([], context) {
-      const docId = context.document.id;
+    execute: async function([], context) {
+      const docId = (context as any).document.id;
       const url = coda.withQueryParams(`https://${AppDomain}/api/responses`, { docId });
-      const response = await context.fetcher.fetch({ method: "GET", url: url, cacheTtlSecs: 0 });
+      const response = await (context as any).fetcher.fetch({ method: "GET", url, cacheTtlSecs: 0 });
+      console.log("🔍 SYNC-responses payload:", JSON.stringify(response.body.responses, null, 2));
       return { result: response.body.responses };
     },
+
+    executeUpdate: async function([], context) {
+      const docId = (context as any).document.id;
+      const url = coda.withQueryParams(`https://${AppDomain}/api/responses`, { docId });
+      const response = await (context as any).fetcher.fetch({method:"GET", url, cacheTtlSecs:0});
+      return { result: response.body.responses };
+    }
   },
 });
+
 
 pack.addFormula({
   name: "SendAppContent",
   description: "Pushes all rows from the db_App_Content table to the web app.",
   parameters: [
     coda.makeParameter({
-      type: coda.ValueType.String,
+      type: coda.ParameterType.String,
       name: "contentPayload",
       description: "A JSON string of the content to send.",
     }),
@@ -68,12 +124,15 @@ pack.addFormula({
   isAction: true,
   execute: async function ([contentPayload], context) {
     let payload;
+    if (typeof contentPayload !== 'string') {
+      throw new coda.UserVisibleError("Invalid payload. Expected a string.");
+    }
     try {
       payload = JSON.parse(contentPayload);
     } catch (e) {
       throw new coda.UserVisibleError("Invalid JSON payload. Please check the button formula.");
     }
-    const response = await context.fetcher.fetch({
+    const response = await (context as any).fetcher.fetch({
       method: "POST",
       // THIS IS THE LINE WE HAVE FIXED
       url: `https://${AppDomain}/api/app_content`,

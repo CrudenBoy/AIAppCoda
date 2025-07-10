@@ -1,53 +1,39 @@
 const express = require('express');
 const router = express.Router();
-const fetch = require('node-fetch');
-const { authorizePush, logActivity } = require('../utils');
+const db = require('../db');
 
-const CODA_API_TOKEN = process.env.CODA_API_TOKEN;
-const CODA_API_BASE = 'https://coda.io/apis/v1';
+// POST /api/tasks - Create a new task
+// masterAuth middleware is applied in server.js, so req.user is available here.
+router.post('/', async (req, res) => {
+  const { docId, taskId, title, description, status } = req.body;
 
-// POST /api/tasks
-router.post('/', authorizePush, async (req, res) => {
-  const { data } = req.body;
-  const { docId, regKey: docRegKey } = req.docDetails; // docId and regKey from authorizePush middleware
+  // Validate that the user object was attached by the middleware
+  if (!req.user) {
+    return res.status(401).json({ message: 'Authentication error: User not found after auth middleware.' });
+  }
 
-  if (!data || typeof data !== 'object' || Object.keys(data).length === 0) {
-    await logActivity(docId, docRegKey, req.path, 400, 'Invalid or empty task data object received.');
-    return res.status(400).json({ message: 'Task data must be a non-empty JSON object.' });
+  // Validate the payload from the request body
+  if (!docId || !taskId || !title) {
+    return res.status(400).json({ message: 'docId, taskId, and title are required fields in the request body.' });
   }
 
   try {
-    const response = await fetch(`${CODA_API_BASE}/docs/${docId}/tables/db_Tasks/rows`, {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${CODA_API_TOKEN}`,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        rows: [{
-          cells: Object.entries(data).map(([col, val]) => ({ column: col, value: val }))
-        }]
-      })
-    });
+    const query = `
+      INSERT INTO tasks ("docId", "taskId", "title", "description", "status", "createdAt")
+      VALUES ($1, $2, $3, $4, $5, NOW())
+      RETURNING *;
+    `;
+    const values = [docId, taskId, title, description, status || 'New'];
+    
+    const { rows } = await db.pool.query(query, values);
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      await logActivity(docId, docRegKey, req.path, response.status, `Coda API error while writing task: ${errorText}`);
-      // It's important to return the actual error from Coda if possible, or a generic one.
-      return res.status(response.status).json({ message: `Failed to write task to Coda: ${errorText}` });
-    }
-
-    const responseData = await response.json();
-    // Assuming Coda API returns some useful data, like the ID of the created row(s)
-    // For now, we'll just use the TaskID from the input if available.
-
-    await logActivity(docId, docRegKey, req.path, 200, 'Task written to Coda successfully.');
-    res.status(200).json({ message: 'Task written to Coda', taskId: data.TaskID, codaResponse: responseData });
-
+    res.status(201).json({ message: 'Task created successfully.', task: rows[0] });
   } catch (error) {
-    console.error('Task write failed:', error);
-    await logActivity(docId, docRegKey, req.path, 500, `Task write failed: ${error.message}`);
-    res.status(500).json({ message: 'Internal Server Error: Failed to write task to Coda.' });
+    console.error('Error creating task:', error);
+    if (error.code === '23505') { // Handle duplicate key error
+      return res.status(409).json({ message: `A task with taskId '${taskId}' already exists.` });
+    }
+    res.status(500).json({ message: 'Failed to create task in database.' });
   }
 });
 
