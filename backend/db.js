@@ -2,15 +2,19 @@
 const { Pool } = require('pg');
 require('dotenv').config();
 
+// The definitive fix: Use an explicit configuration object.
 const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
+  user: process.env.DB_USER,
+  password: process.env.DB_PASSWORD,
+  host: process.env.DB_HOST,
+  port: process.env.DB_PORT,
+  database: process.env.DB_DATABASE,
   ssl: {
-    rejectUnauthorized: false, // Required for connecting to DigitalOcean databases
+    rejectUnauthorized: false,
   },
 });
 
 module.exports = {
   query: (text, params) => pool.query(text, params),
-  // FIX: Export the pool object so server.js can access it for transactions.
   pool: pool,
 };

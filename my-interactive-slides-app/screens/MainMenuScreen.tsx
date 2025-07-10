@@ -67,20 +67,18 @@ const MainMenuScreen: React.FC<MainMenuScreenProps> = ({
           Summarize Full Presentation
         </button>
         <button
-          onClick={() => navigateTo('tasks')}
-          // Fix: Use tasks prop for disabled check
-          disabled={!isApiKeySet && tasks.length === 0} // Allow viewing tasks even if API key removed later, if tasks exist
-          className="w-full px-4 py-3 bg-green-500 text-white font-semibold rounded-md hover:bg-green-600 disabled:bg-gray-400 transition duration-150"
+          onClick={() => navigateTo('submitTask')}
+          disabled={!isApiKeySet}
+          className="w-full px-4 py-3 bg-blue-500 text-white font-semibold rounded-md hover:bg-blue-600 disabled:bg-gray-400 transition duration-150"
         >
-          View Tasks
+          Submit New Task
         </button>
         <button
-          onClick={() => navigateTo('responses')}
-          // Fix: Use responses prop for disabled check
-          disabled={!isApiKeySet && responses.length === 0} // Allow viewing responses if they exist
-          className="w-full px-4 py-3 bg-purple-500 text-white font-semibold rounded-md hover:bg-purple-600 disabled:bg-gray-400 transition duration-150"
+          onClick={() => navigateTo('submitResponse')}
+          disabled={!isApiKeySet}
+          className="w-full px-4 py-3 bg-green-500 text-white font-semibold rounded-md hover:bg-green-600 disabled:bg-gray-400 transition duration-150"
         >
-          View Responses
+          Submit Response
         </button>
       </div>
       

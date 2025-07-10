@@ -10,12 +10,12 @@ import TTSManager from './src/services/ttsManager';
 // Screen Components
 import MainMenuScreen from './screens/MainMenuScreen';
 import {PresentationScreen} from './screens/PresentationScreen';
-import TasksScreen from './screens/TasksScreen';
-import ResponsesScreen from './screens/ResponsesScreen';
 import AdminScreen from './screens/AdminScreen';
+import SubmitTaskScreen from './screens/SubmitTaskScreen';
+import SubmitResponseScreen from './screens/SubmitResponseScreen';
 import TaskFormModal from './components/TaskFormModal';
 
-export type ScreenView = 'mainMenu' | 'presentation' | 'tasks' | 'responses' | 'admin';
+export type ScreenView = 'mainMenu' | 'presentation' | 'admin' | 'submitTask' | 'submitResponse';
 
 
 const App: React.FC = () => {
@@ -209,20 +209,43 @@ const App: React.FC = () => {
   const handleSaveChatSummary = async () => {
     const queryParams = new URLSearchParams(window.location.search);
     const docId = queryParams.get('docId');
-    if (!docId) return;
+    if (!docId) {
+        setGlobalError("Could not save summary: Document ID is missing.");
+        return;
+    }
+    if (!isApiKeySet) {
+        setGlobalError("Cannot save summary: API Key is not set.");
+        return;
+    }
+
     setIsLoadingAction(true);
     try {
-      const keywords = "Keywords disabled"; // Stubbed
       const responseId = `resp-${Date.now()}`;
-      const responsePayload = { docId, responseId, content: editableChatSummary, taskId: null };
-      const response = await fetch('https://monkfish-app-pcc2z.ondigitalocean.app/api/responses', {
+      const responsePayload = {
+        docId,
+        responseId,
+        content: editableChatSummary,
+        taskId: null
+      };
+
+      const response = await fetch('/api/responses', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${userApiKey}`,
+        },
         body: JSON.stringify(responsePayload),
       });
-      if (!response.ok) throw new Error('API call failed');
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ message: 'An unknown error occurred.' }));
+        throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
+      }
+      
+      const keywords = "Keywords disabled"; // Stubbed
       setResponseTableData((prev: ResponseEntry[]) => [...prev, { id: responseId, type: "Chat Summary", text: editableChatSummary, keywords, createdAt: new Date() }]);
       setIsChatSummaryModalOpen(false);
+      setEditableChatSummary("");
     } catch (e: any) {
       setGlobalError(`Failed to save summary: ${e.message}`);
     } finally {
@@ -282,25 +305,6 @@ const renderScreen = () => {
             setIsTTSSpeaking={setIsTTSSpeaking}
           />
         );
-      case 'tasks':
-        return (
-          <TasksScreen
-            tasks={tasks}
-            onDownloadTasks={downloadTasks}
-            navigation={{ navigateTo: setCurrentScreen, openApiKeyModal: () => {}, handleOpenAdminScreen }}
-            onEditTask={handleOpenTaskForm}
-            isApiKeySet={isApiKeySet}
-          />
-        );
-      case 'responses':
-        return (
-          <ResponsesScreen
-            responses={responseTableData}
-            onDownloadResponses={downloadResponses}
-            navigation={{ navigateTo: setCurrentScreen, openApiKeyModal: () => {}, handleOpenAdminScreen }}
-            isApiKeySet={isApiKeySet}
-          />
-        );
       case 'admin':
         return (
           <AdminScreen
@@ -316,6 +320,10 @@ const renderScreen = () => {
             isApiKeySet={isApiKeySet}
           />
         );
+      case 'submitTask':
+        return <SubmitTaskScreen />;
+      case 'submitResponse':
+        return <SubmitResponseScreen />;
       case 'mainMenu':
       default:
         return (

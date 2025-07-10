@@ -1,49 +1,39 @@
 const express = require('express');
 const router = express.Router();
-const fetch = require('node-fetch');
-const { authorizePush, logActivity } = require('../utils');
+const db = require('../db');
 
-const CODA_API_TOKEN = process.env.CODA_API_TOKEN;
-const CODA_API_BASE = 'https://coda.io/apis/v1';
+// POST /api/responses - Create a new response
+// masterAuth middleware is applied in server.js, so req.user is available here.
+router.post('/', async (req, res) => {
+  const { docId, responseId, content } = req.body;
 
-// POST /api/responses
-router.post('/', authorizePush, async (req, res) => {
-  const { data } = req.body;
-  const { docId, regKey: docRegKey } = req.docDetails; // docId and regKey from authorizePush middleware
+  // Validate that the user object was attached by the middleware
+  if (!req.user) {
+    return res.status(401).json({ message: 'Authentication error: User not found after auth middleware.' });
+  }
 
-  if (!data || typeof data !== 'object' || Object.keys(data).length === 0) {
-    await logActivity(docId, docRegKey, req.path, 400, 'Invalid or empty response data object received.');
-    return res.status(400).json({ message: 'Response data must be a non-empty JSON object.' });
+  // Validate the payload from the request body
+  if (!docId || !responseId || !content) {
+    return res.status(400).json({ message: 'docId, responseId, and content are required fields.' });
   }
 
   try {
-    const response = await fetch(`${CODA_API_BASE}/docs/${docId}/tables/db_Responses/rows`, {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${CODA_API_TOKEN}`,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        rows: [{
-          cells: Object.entries(data).map(([col, val]) => ({ column: col, value: val }))
-        }]
-      })
-    });
+    const query = `
+      INSERT INTO responses ("docId", "responseId", "content", "submittedAt")
+      VALUES ($1, $2, $3, NOW())
+      RETURNING *;
+    `;
+    const values = [docId, responseId, content];
+    
+    const { rows } = await db.pool.query(query, values);
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      await logActivity(docId, docRegKey, req.path, response.status, `Coda API error while writing response: ${errorText}`);
-      return res.status(response.status).json({ message: `Failed to write response to Coda: ${errorText}` });
-    }
-
-    const responseData = await response.json();
-    await logActivity(docId, docRegKey, req.path, 200, 'Response written to Coda successfully.');
-    res.status(200).json({ message: 'Response written to Coda', responseId: data.ResponseID, codaResponse: responseData });
-
+    res.status(201).json({ message: 'Response created successfully.', response: rows[0] });
   } catch (error) {
-    console.error('Response write failed:', error);
-    await logActivity(docId, docRegKey, req.path, 500, `Response write failed: ${error.message}`);
-    res.status(500).json({ message: 'Internal Server Error: Failed to write response to Coda.' });
+    console.error('Error creating response:', error);
+    if (error.code === '23505') { // Handle duplicate key error
+      return res.status(409).json({ message: `A response with responseId '${responseId}' already exists.` });
+    }
+    res.status(500).json({ message: 'Failed to create response in database.' });
   }
 });
 
