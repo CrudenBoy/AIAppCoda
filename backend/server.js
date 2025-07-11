@@ -22,7 +22,8 @@ const whitelist = [
   'http://127.0.0.1:5173',
   'http://localhost:8000',
   'http://127.0.0.1:8000',
-  'https://knowledge-base-interactive-slides--chat-4m5s6.ondigitalocean.app' // Your live frontend URL
+  'https://knowledge-base-interactive-slides--chat-4m5s6.ondigitalocean.app', // Your live frontend URL
+  'https://monkfish-app-pcc2z.ondigitalocean.app' // <<< THIS IS THE FIX
 ];
 const corsOptions = {
   origin: function (origin, callback) {
@@ -31,6 +32,7 @@ const corsOptions = {
     if (whitelist.indexOf(origin) !== -1) {
       callback(null, true);
     } else {
+      console.log(`CORS Error: Origin ${origin} not allowed.`); // Add logging
       callback(new Error('Not allowed by CORS'));
     }
   }
