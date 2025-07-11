@@ -31,28 +31,6 @@ pack.setUserAuthentication({
   },
 });
 
-// the following "foo" block is dugging code to test sync tables that has been added. It will need deleted after the system is working
-import { SyncExecutionContext } from "@codahq/packs-sdk";
-
-pack.addSyncTable({
-  name: "foo",
-  identityName: "Foo",
-  schema: TaskSchema,
-  formula: {
-    name: "SyncFoo",
-    description: "Fetches test Foo rows for minimal repro",
-    parameters: [],
-    execute: async function (_args, context) {
-      console.log("🔍 SYNC-foo INITIAL called");
-      return { result: [ { taskId: "X", title: "Foo" } ] };
-    },
-    // @ts-ignore
-    executeUpdate: async function (_args, context) {
-      console.log("🔄 SYNC-foo UPDATE called");
-      return { result: [ { taskId: "Y", title: "FooUpdate" } ] };
-    },
-  },
-})
 
 pack.addSyncTable({
   name: "tasks",
