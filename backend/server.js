@@ -71,24 +71,24 @@ app.get('/', (req, res) => {
 });
 
 // User Identification Route
-app.get('/me', masterAuth, (req, res) => {
+app.get('/api/me', masterAuth, (req, res) => {
   res.json({ email: req.user.email });
 });
 
 // --- User Usage and Upgrade Endpoints ---
 
 // Get User Credit Usage
-app.get('/v1/user/usage', masterAuth, (req, res) => {
+app.get('/api/v1/user/usage', masterAuth, (req, res) => {
   res.json({ credits: req.user.credits });
 });
 
 // Upgrade User Plan (Placeholder)
-app.post('/v1/user/upgrade', masterAuth, (req, res) => {
+app.post('/api/v1/user/upgrade', masterAuth, (req, res) => {
   res.status(200).json({ message: "Upgrade path not yet implemented." });
 });
 
 // Get Tasks Route
-app.get('/tasks', masterAuth, async (req, res) => {
+app.get('/api/tasks', masterAuth, async (req, res) => {
   const { docId } = req.query;
   try {
     const result = await db.query('SELECT * FROM tasks WHERE "docId" = $1', [docId]);
@@ -100,7 +100,7 @@ app.get('/tasks', masterAuth, async (req, res) => {
 });
 
 // Get Responses Route
-app.get('/responses', masterAuth, async (req, res) => {
+app.get('/api/responses', masterAuth, async (req, res) => {
   const { docId } = req.query;
   try {
     const result = await db.query('SELECT * FROM responses WHERE "docId" = $1', [docId]);
@@ -112,7 +112,7 @@ app.get('/responses', masterAuth, async (req, res) => {
 });
 
 // GET /app_content - Fetches all slide content for a given docId, sorted by displayOrder
-app.get('/app_content', async (req, res) => {
+app.get('/api/app_content', async (req, res) => {
   const { docId } = req.query;
 
   if (!docId) {
@@ -155,7 +155,7 @@ app.get('/app_content', async (req, res) => {
 });
 
 // POST /app_content - Receives data from the Coda "SendAppContent" action
-app.post('/app_content', masterAuth, async (req, res) => {
+app.post('/api/app_content', masterAuth, async (req, res) => {
   const { docId, contentRows } = req.body;
 
   if (!docId || !Array.isArray(contentRows) || contentRows.length === 0) {
@@ -225,7 +225,7 @@ app.post('/app_content', masterAuth, async (req, res) => {
 });
 
 // PUT /app_content/instructions - Updates dialogue and presentation instructions for a docId
-app.put('/app_content/instructions', masterAuth, async (req, res) => {
+app.put('/api/app_content/instructions', masterAuth, async (req, res) => {
   const { docId, dialogueInstruction, presentationInstruction } = req.body;
 
   if (!docId || !dialogueInstruction || !presentationInstruction) {
@@ -254,7 +254,7 @@ app.put('/app_content/instructions', masterAuth, async (req, res) => {
 // --- Presentation Settings Endpoints ---
 
 // GET /api/presentation/settings - Fetches the global presentation settings
-app.get('/presentation/settings', masterAuth, async (req, res) => {
+app.get('/api/presentation/settings', masterAuth, async (req, res) => {
   try {
     const query = 'SELECT * FROM presentation_settings LIMIT 1';
     const { rows } = await db.pool.query(query);
@@ -271,7 +271,7 @@ app.get('/presentation/settings', masterAuth, async (req, res) => {
 });
 
 // PUT /api/presentation/settings - Updates the global presentation settings
-app.put('/presentation/settings', masterAuth, async (req, res) => {
+app.put('/api/presentation/settings', masterAuth, async (req, res) => {
   const { dialogueInstruction, presentationInstruction } = req.body;
 
   if (!dialogueInstruction || !presentationInstruction) {
@@ -298,11 +298,11 @@ app.put('/presentation/settings', masterAuth, async (req, res) => {
   }
 });
 
-app.use('/tasks', masterAuth, tasksRouter);
-app.use('/responses', masterAuth, responsesRouter);
+app.use('/api/tasks', masterAuth, tasksRouter);
+app.use('/api/responses', masterAuth, responsesRouter);
 
 // --- AI Gateway Endpoint ---
-app.post('/v1/chat/:agent_slug', masterAuth, async (req, res) => {
+app.post('/api/v1/chat/:agent_slug', masterAuth, async (req, res) => {
   const { agent_slug } = req.params;
   const userRequestData = req.body;
   const { userId, credits } = req.user; // User object from masterAuth
