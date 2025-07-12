@@ -40,7 +40,7 @@ pack.addSyncTable({
     parameters: [],
     // Full-sync
     execute: async function([], context) {
-      const docId = context.sync?.dynamicUrl ? new URL(context.sync.dynamicUrl).searchParams.get('docId') : (context as any).document?.id;
+      const docId = context.sync.continuation?.docId || (context.sync.dynamicUrl ? new URL(context.sync.dynamicUrl).searchParams.get('docId') : null) || (context as any).document?.id;
       if (!docId) {
         throw new coda.UserVisibleError("Could not determine the doc ID for this sync.");
       }
@@ -53,7 +53,7 @@ pack.addSyncTable({
 
     // 2) Incremental-refresh:
     executeUpdate: async function ([], context) {
-      const docId = (context as any).sync?.dynamicUrl ? new URL((context as any).sync.dynamicUrl).searchParams.get('docId') : (context as any).document?.id;
+      const docId = (context as any).sync?.continuation?.docId || ((context as any).sync?.dynamicUrl ? new URL((context as any).sync.dynamicUrl).searchParams.get('docId') : null) || (context as any).document?.id;
       if (!docId) {
         throw new coda.UserVisibleError("Could not determine the doc ID for this sync.");
       }
@@ -74,7 +74,7 @@ pack.addSyncTable({
     description: "Pulls responses from the web app.",
     parameters: [],
     execute: async function([], context) {
-      const docId = context.sync?.dynamicUrl ? new URL(context.sync.dynamicUrl).searchParams.get('docId') : (context as any).document?.id;
+      const docId = context.sync.continuation?.docId || (context.sync.dynamicUrl ? new URL(context.sync.dynamicUrl).searchParams.get('docId') : null) || (context as any).document?.id;
       if (!docId) {
         throw new coda.UserVisibleError("Could not determine the doc ID for this sync.");
       }
@@ -85,7 +85,7 @@ pack.addSyncTable({
     },
 
     executeUpdate: async function ([], context) {
-      const docId = (context as any).sync?.dynamicUrl ? new URL((context as any).sync.dynamicUrl).searchParams.get('docId') : (context as any).document?.id;
+      const docId = (context as any).sync?.continuation?.docId || ((context as any).sync?.dynamicUrl ? new URL((context as any).sync.dynamicUrl).searchParams.get('docId') : null) || (context as any).document?.id;
       if (!docId) {
         throw new coda.UserVisibleError("Could not determine the doc ID for this sync.");
       }
