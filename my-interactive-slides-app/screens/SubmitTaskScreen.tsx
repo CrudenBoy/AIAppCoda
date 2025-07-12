@@ -25,7 +25,7 @@ const SubmitTaskScreen: React.FC = () => {
     };
 
     try {
-      const response = await fetch('http://localhost:8080/api/tasks', {
+      const response = await fetch('/api/tasks', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -36,7 +36,7 @@ const SubmitTaskScreen: React.FC = () => {
 
       if (response.ok) {
         const result = await response.json();
-        setMessage(`Task submitted successfully! Task ID: ${result.taskId}`);
+        setMessage(`Task submitted successfully! Task ID: ${result.task.taskId}`);
         setTaskId('');
         setTitle('');
         setDescription('');
