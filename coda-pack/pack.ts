@@ -42,6 +42,7 @@ pack.addSyncTable({
     execute: async function([], context) {
       const docId = context.sync.continuation?.docId || (context.sync.dynamicUrl ? new URL(context.sync.dynamicUrl).searchParams.get('docId') : null) || (context as any).document?.id;
       const url = coda.withQueryParams(`https://${AppDomain}/api/tasks`, { docId });
+      console.log("Requesting URL:", url);
       const response = await context.fetcher.fetch({ method: "GET", url, cacheTtlSecs: 0 });
       console.log("Raw initial response body:", JSON.stringify(response.body, null, 2));
       return {
@@ -54,7 +55,16 @@ pack.addSyncTable({
     // 2) Incremental-refresh:
     executeUpdate: async function ([], context) {
       const docId = (context as any).continuation.docId as string;
-      throw new coda.UserVisibleError("The docId for this sync is: " + docId);
+      const url = coda.withQueryParams(
+        `https://${AppDomain}/api/tasks`,
+        { docId }
+      );
+      const response = await (context as any).fetcher.fetch({
+        method: "GET",
+        url,
+        cacheTtlSecs: 0,
+      });
+      return response.body.tasks;
     },
   },
 });
