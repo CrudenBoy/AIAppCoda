@@ -53,19 +53,6 @@ pack.addSyncTable({
     // Incremental-sync (just re-calls execute)
 
     // 2) Incremental-refresh:
-    executeUpdate: async function ([], context) {
-      const docId = (context as any).continuation.docId as string;
-      const url = coda.withQueryParams(
-        `https://${AppDomain}/api/tasks`,
-        { docId }
-      );
-      const response = await (context as any).fetcher.fetch({
-        method: "GET",
-        url,
-        cacheTtlSecs: 0,
-      });
-      return response.body.tasks;
-    },
   },
 });
 
@@ -89,19 +76,6 @@ pack.addSyncTable({
       };
     },
 
-    executeUpdate: async function ([], context) {
-      const docId = (context as any).continuation.docId as string;
-      const url = coda.withQueryParams(
-        `https://monkfish-app-pcc2z.ondigitalocean.app/api/responses`,
-        { docId }
-      );
-      const response = await (context as any).fetcher.fetch({
-        method: "GET",
-        url,
-        cacheTtlSecs: 0,
-      });
-      return response.body.responses;
-    },
   },
 });
 
