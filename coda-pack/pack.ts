@@ -50,16 +50,7 @@ pack.addSyncTable({
 
     // 2) Incremental-refresh:
     executeUpdate: async function ([], context) {
-      const docId = (context as any).document.id;
-      const url = coda.withQueryParams(`https://${AppDomain}/api/tasks`, {
-        docId,
-      });
-      const response = await (context as any).fetcher.fetch({
-        method: "GET",
-        url,
-        cacheTtlSecs: 0,
-      });
-      return response.body.tasks;
+      throw new coda.UserVisibleError('Context keys: ' + JSON.stringify(Object.keys(context)));
     },
   },
 });
