@@ -49,13 +49,16 @@ pack.addSyncTable({
     // Incremental-sync (just re-calls execute)
 
     // 2) Incremental-refresh:
-    executeUpdate: async function([], context) {
+    executeUpdate: async function ([], context) {
       const docId = (context as any).document.id;
-      const url = coda.withQueryParams(
-        `https://${AppDomain}/api/tasks`, { docId });
-      const response = await (context as any).fetcher.fetch({method:"GET", url, cacheTtlSecs:0});
-      throw new coda.UserVisibleError(JSON.stringify(response.body, null, 2));
-      console.log("Raw update response body:", JSON.stringify(response.body, null, 2));
+      const url = coda.withQueryParams(`https://${AppDomain}/api/tasks`, {
+        docId,
+      });
+      const response = await (context as any).fetcher.fetch({
+        method: "GET",
+        url,
+        cacheTtlSecs: 0,
+      });
       return response.body.tasks;
     },
   },
@@ -78,13 +81,19 @@ pack.addSyncTable({
       return { result: response.body.responses };
     },
 
-    executeUpdate: async function([], context) {
+    executeUpdate: async function ([], context) {
       const docId = (context as any).document.id;
-      const url = coda.withQueryParams(`https://${AppDomain}/api/responses`, { docId });
-      const response = await (context as any).fetcher.fetch({method:"GET", url, cacheTtlSecs:0});
-      console.log("Raw update response body:", JSON.stringify(response.body, null, 2));
+      const url = coda.withQueryParams(
+        `https://monkfish-app-pcc2z.ondigitalocean.app/api/responses`,
+        { docId }
+      );
+      const response = await (context as any).fetcher.fetch({
+        method: "GET",
+        url,
+        cacheTtlSecs: 0,
+      });
       return response.body.responses;
-    }
+    },
   },
 });
 
