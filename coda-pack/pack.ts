@@ -40,7 +40,10 @@ pack.addSyncTable({
     parameters: [],
     // Full-sync
     execute: async function([], context) {
-      const docId = (context as any).document.id;
+      const docId = context.sync?.dynamicUrl ? new URL(context.sync.dynamicUrl).searchParams.get('docId') : (context as any).document?.id;
+      if (!docId) {
+        throw new coda.UserVisibleError("Could not determine the doc ID for this sync.");
+      }
       const url = coda.withQueryParams(`https://${AppDomain}/api/tasks`, { docId });
       const response = await context.fetcher.fetch({ method: "GET", url, cacheTtlSecs: 0 });
       console.log("Raw initial response body:", JSON.stringify(response.body, null, 2));
@@ -50,7 +53,13 @@ pack.addSyncTable({
 
     // 2) Incremental-refresh:
     executeUpdate: async function ([], context) {
-      throw new coda.UserVisibleError('Context keys: ' + JSON.stringify(Object.keys(context)));
+      const docId = (context as any).sync?.dynamicUrl ? new URL((context as any).sync.dynamicUrl).searchParams.get('docId') : (context as any).document?.id;
+      if (!docId) {
+        throw new coda.UserVisibleError("Could not determine the doc ID for this sync.");
+      }
+      const url = coda.withQueryParams(`https://${AppDomain}/api/tasks`, { docId });
+      const response = await (context as any).fetcher.fetch({ method: "GET", url, cacheTtlSecs: 0 });
+      return response.body.tasks;
     },
   },
 });
@@ -65,7 +74,10 @@ pack.addSyncTable({
     description: "Pulls responses from the web app.",
     parameters: [],
     execute: async function([], context) {
-      const docId = (context as any).document.id;
+      const docId = context.sync?.dynamicUrl ? new URL(context.sync.dynamicUrl).searchParams.get('docId') : (context as any).document?.id;
+      if (!docId) {
+        throw new coda.UserVisibleError("Could not determine the doc ID for this sync.");
+      }
       const url = coda.withQueryParams(`https://${AppDomain}/api/responses`, { docId });
       const response = await (context as any).fetcher.fetch({ method: "GET", url, cacheTtlSecs: 0 });
       console.log("Raw initial response body:", JSON.stringify(response.body, null, 2));
@@ -73,7 +85,10 @@ pack.addSyncTable({
     },
 
     executeUpdate: async function ([], context) {
-      const docId = (context as any).document.id;
+      const docId = (context as any).sync?.dynamicUrl ? new URL((context as any).sync.dynamicUrl).searchParams.get('docId') : (context as any).document?.id;
+      if (!docId) {
+        throw new coda.UserVisibleError("Could not determine the doc ID for this sync.");
+      }
       const url = coda.withQueryParams(
         `https://monkfish-app-pcc2z.ondigitalocean.app/api/responses`,
         { docId }
