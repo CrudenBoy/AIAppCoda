@@ -23,7 +23,7 @@ const SubmitResponseScreen: React.FC = () => {
     };
 
     try {
-      const response = await fetch('http://localhost:8080/api/responses', {
+      const response = await fetch('/api/responses', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
