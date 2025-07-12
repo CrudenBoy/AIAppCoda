@@ -2,8 +2,6 @@ import * as coda from "@codahq/packs-sdk";
 import { TaskSchema, ResponseSchema } from "./schemas";
 
 // Verify that the schemas you just edited are being loaded correctly:
-console.log("▶️ Loaded TaskSchema.idProperty:", TaskSchema.idProperty);
-console.log("▶️ Loaded ResponseSchema.idProperty:", ResponseSchema.idProperty);
 
 export const pack = coda.newPack();
 
@@ -45,7 +43,7 @@ pack.addSyncTable({
       const docId = (context as any).document.id;
       const url = coda.withQueryParams(`https://${AppDomain}/api/tasks`, { docId });
       const response = await context.fetcher.fetch({ method: "GET", url, cacheTtlSecs: 0 });
-      console.log("🔍 SYNC-tasks payload:", JSON.stringify(response.body.tasks, null, 2));
+      console.log("Raw tasks response body:", JSON.stringify(response.body, null, 2));
       return { result: response.body.tasks };
     },
     // Incremental-sync (just re-calls execute)
@@ -74,7 +72,7 @@ pack.addSyncTable({
       const docId = (context as any).document.id;
       const url = coda.withQueryParams(`https://${AppDomain}/api/responses`, { docId });
       const response = await (context as any).fetcher.fetch({ method: "GET", url, cacheTtlSecs: 0 });
-      console.log("🔍 SYNC-responses payload:", JSON.stringify(response.body.responses, null, 2));
+      console.log("Raw responses response body:", JSON.stringify(response.body, null, 2));
       return { result: response.body.responses };
     },
 
