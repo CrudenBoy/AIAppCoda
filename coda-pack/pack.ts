@@ -54,6 +54,7 @@ pack.addSyncTable({
       const url = coda.withQueryParams(
         `https://${AppDomain}/api/tasks`, { docId });
       const response = await (context as any).fetcher.fetch({method:"GET", url, cacheTtlSecs:0});
+      throw new coda.UserVisibleError(JSON.stringify(response.body, null, 2));
       console.log("Raw update response body:", JSON.stringify(response.body, null, 2));
       return response.body.tasks;
     },
