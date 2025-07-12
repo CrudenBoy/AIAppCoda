@@ -47,7 +47,10 @@ pack.addSyncTable({
       const url = coda.withQueryParams(`https://${AppDomain}/api/tasks`, { docId });
       const response = await context.fetcher.fetch({ method: "GET", url, cacheTtlSecs: 0 });
       console.log("Raw initial response body:", JSON.stringify(response.body, null, 2));
-      return { result: response.body.tasks };
+      return {
+        result: response.body.tasks,
+        continuation: { docId: docId },
+      };
     },
     // Incremental-sync (just re-calls execute)
 
@@ -81,7 +84,10 @@ pack.addSyncTable({
       const url = coda.withQueryParams(`https://${AppDomain}/api/responses`, { docId });
       const response = await (context as any).fetcher.fetch({ method: "GET", url, cacheTtlSecs: 0 });
       console.log("Raw initial response body:", JSON.stringify(response.body, null, 2));
-      return { result: response.body.responses };
+      return {
+        result: response.body.responses,
+        continuation: { docId: docId },
+      };
     },
 
     executeUpdate: async function ([], context) {
