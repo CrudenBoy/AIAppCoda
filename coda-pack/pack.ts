@@ -30,6 +30,18 @@ pack.setUserAuthentication({
 });
 
 
+pack.addFormula({
+  name: "CurrentDocumentId",
+  description: "Returns the ID of the current Coda document.",
+  parameters: [],
+  resultType: coda.ValueType.String,
+  execute: async function(_args, context) {
+    // The context of a formula suggested value has access to the doc, but the
+    // standard types don't reflect that.
+    return (context as any).document?.id || (context as any).documentId;
+  },
+});
+
 pack.addSyncTable({
   name: "tasks",
   identityName: "Task",
@@ -41,7 +53,10 @@ pack.addSyncTable({
       coda.makeParameter({
         type: coda.ParameterType.String,
         name: "docId",
-        description: "The ID of the document to sync.",
+        description: "The Coda document ID to sync. This is typically set automatically.",
+        suggestedValue: coda.makeFormula({
+          name: "CurrentDocumentId",
+        }) as any,
       }),
     ],
     // Full-sync
@@ -72,7 +87,10 @@ pack.addSyncTable({
       coda.makeParameter({
         type: coda.ParameterType.String,
         name: "docId",
-        description: "The ID of the document to sync.",
+        description: "The Coda document ID to sync. This is typically set automatically.",
+        suggestedValue: coda.makeFormula({
+          name: "CurrentDocumentId",
+        }) as any,
       }),
     ],
     execute: async function([docId], context) {
