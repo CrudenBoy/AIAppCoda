@@ -37,17 +37,21 @@ pack.addSyncTable({
   formula: {
     name: "SyncTasks",
     description: "Pulls tasks from the web app.",
-    parameters: [],
+    parameters: [
+      coda.makeParameter({
+        type: coda.ParameterType.String,
+        name: "docId",
+        description: "The ID of the document to sync.",
+      }),
+    ],
     // Full-sync
-    execute: async function([], context) {
-      const docId = context.sync.continuation?.docId || (context.sync.dynamicUrl ? new URL(context.sync.dynamicUrl).searchParams.get('docId') : null) || (context as any).document?.id;
+    execute: async function([docId], context) {
       const url = coda.withQueryParams(`https://${AppDomain}/api/tasks`, { docId });
       console.log("Requesting URL:", url);
       const response = await context.fetcher.fetch({ method: "GET", url, cacheTtlSecs: 0 });
       console.log("Raw initial response body:", JSON.stringify(response.body, null, 2));
       return {
         result: response.body.tasks,
-        continuation: { docId: docId },
       };
     },
     // Incremental-sync (just re-calls execute)
@@ -64,15 +68,19 @@ pack.addSyncTable({
   formula: {
     name: "SyncResponses",
     description: "Pulls responses from the web app.",
-    parameters: [],
-    execute: async function([], context) {
-      const docId = context.sync.continuation?.docId || (context.sync.dynamicUrl ? new URL(context.sync.dynamicUrl).searchParams.get('docId') : null) || (context as any).document?.id;
+    parameters: [
+      coda.makeParameter({
+        type: coda.ParameterType.String,
+        name: "docId",
+        description: "The ID of the document to sync.",
+      }),
+    ],
+    execute: async function([docId], context) {
       const url = coda.withQueryParams(`https://${AppDomain}/api/responses`, { docId });
       const response = await (context as any).fetcher.fetch({ method: "GET", url, cacheTtlSecs: 0 });
       console.log("Raw initial response body:", JSON.stringify(response.body, null, 2));
       return {
         result: response.body.responses,
-        continuation: { docId: docId },
       };
     },
 
