@@ -46,6 +46,7 @@ pack.addSyncTable({
   name: "tasks",
   identityName: "Task",
   schema: TaskSchema,
+  connectionRequirement: coda.ConnectionRequirement.Required,
   formula: {
     name: "SyncTasks",
     description: "Pulls tasks from the web app.",
@@ -78,6 +79,7 @@ pack.addSyncTable({
   name: "responses",
   identityName: "Response",
   schema: ResponseSchema,
+  connectionRequirement: coda.ConnectionRequirement.Required,
   formula: {
     name: "SyncResponses",
     description: "Pulls responses from the web app.",
