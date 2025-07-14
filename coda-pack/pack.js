@@ -1,5 +1,6 @@
-// 1) Import the CJS build directly so we get the full API, including makeParameterValue
-const coda = require("@codahq/packs-sdk/dist/index.js");
+console.log("makeParameterValue:", typeof coda.makeParameterValue);
+// 1) Import the CJS build straight from the public entrypoint
+const coda = require("@codahq/packs-sdk");
 
 // 2) Import your schemas exactly once
 const { TaskSchema, ResponseSchema } = require("./schemas");
