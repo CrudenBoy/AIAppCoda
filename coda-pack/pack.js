@@ -1,6 +1,5 @@
-// 1) Import & unwrap the Packs SDK exactly once
-const _coda = require("@codahq/packs-sdk");
-const coda = _coda.default ?? _coda;
+// 1) Import the CJS build directly so we get the full API, including makeParameterValue
+const coda = require("@codahq/packs-sdk/dist/index.js");
 
 // 2) Import your schemas exactly once
 const { TaskSchema, ResponseSchema } = require("./schemas");
