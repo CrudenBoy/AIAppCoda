@@ -10,6 +10,6 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "@codahq/packs-sdk": "^1.9.11"
+    "@codahq/packs-sdk": "^1.9.7"
   }
 }

@@ -1,29 +1,16 @@
+import * as coda from "@codahq/packs-sdk";
+import { TaskSchema, ResponseSchema } from "./schemas";
 
-// 1) Import the CJS build straight from the public entrypoint
-const coda = require("@codahq/packs-sdk");
-console.log("makeParameterValue:", typeof coda.makeParameterValue);
-// If the harness hasn’t wired up g.makeParameterValue, override it locally:
-coda.makeParameterValue = ({formula}) => ({
-  type: "ParameterValue",
-  formula,
-});
+// Verify that the schemas you just edited are being loaded correctly:
+
+export const pack = coda.newPack();
+
+// Allow your API domain so fetcher.fetch will actually fire.
+pack.addNetworkDomain("monkfish-app-pcc2z.ondigitalocean.app");
 
 
-// 2) Import your schemas exactly once
-const { TaskSchema, ResponseSchema } = require("./schemas");
-
-// 3) Define your Pack exactly once
-exports.pack = coda.newPack();
-const pack = exports.pack;
-
-// 4) Declare your host once and reuse it everywhere
-const API_DOMAIN = "monkfish-app-pcc2z.ondigitalocean.app";
-
-// Whitelist that domain so context.fetcher.fetch() will work
-pack.addNetworkDomain(API_DOMAIN);
-
-// Alias for backwards-compatibility with existing URL code
-const AppDomain = API_DOMAIN;
+// IMPORTANT: We will replace this with your real app URL later.
+const AppDomain = "monkfish-app-pcc2z.ondigitalocean.app";
 
 
 pack.setUserAuthentication({
@@ -33,7 +20,8 @@ pack.setUserAuthentication({
   // Tell Coda which host to send the bearer token to
   networkDomain: AppDomain,
   getConnectionName: async function (context) {
-    const response = await context.fetcher.fetch({
+    // Cast to any so TS knows about fetcher
+    const response = await (context as any).fetcher.fetch({
       method: "GET",
       url: `https://${AppDomain}/api/me`,
     });
@@ -48,7 +36,9 @@ pack.addFormula({
   parameters: [],
   resultType: coda.ValueType.String,
   execute: async function(_args, context) {
-    return context.document?.id || context.documentId;
+    // The context of a formula suggested value has access to the doc, but the
+    // standard types don't reflect that.
+    return (context as any).document?.id || (context as any).documentId;
   },
 });
 
@@ -65,10 +55,7 @@ pack.addSyncTable({
         type: coda.ParameterType.String,
         name: "docId",
         description: "The Coda document ID to sync. This is typically set automatically.",
-        suggestedValue: {
-          type: "ParameterValue",
-          formula: "CurrentDocumentId",
-          },
+        suggestedValue: { formula: "CurrentDocumentId" } as any,
       }),
     ],
     // Full-sync
@@ -101,15 +88,12 @@ pack.addSyncTable({
         type: coda.ParameterType.String,
         name: "docId",
         description: "The Coda document ID to sync. This is typically set automatically.",
-        suggestedValue: {
-          type: "ParameterValue",
-          formula: "CurrentDocumentId",
-          },
+        suggestedValue: { formula: "CurrentDocumentId" } as any,
       }),
     ],
     execute: async function([docId], context) {
       const url = coda.withQueryParams(`https://${AppDomain}/api/responses`, { docId });
-      const response = await context.fetcher.fetch({ method: "GET", url, cacheTtlSecs: 0 });
+      const response = await (context as any).fetcher.fetch({ method: "GET", url, cacheTtlSecs: 0 });
       console.log("Raw initial response body:", JSON.stringify(response.body, null, 2));
       return {
         result: response.body.responses,
@@ -142,7 +126,7 @@ pack.addFormula({
     } catch (e) {
       throw new coda.UserVisibleError("Invalid JSON payload. Please check the button formula.");
     }
-    const response = await context.fetcher.fetch({
+    const response = await (context as any).fetcher.fetch({
       method: "POST",
       // THIS IS THE LINE WE HAVE FIXED
       url: `https://${AppDomain}/api/app_content`,
