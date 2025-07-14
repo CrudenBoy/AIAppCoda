@@ -1,6 +1,13 @@
-console.log("makeParameterValue:", typeof coda.makeParameterValue);
+
 // 1) Import the CJS build straight from the public entrypoint
 const coda = require("@codahq/packs-sdk");
+console.log("makeParameterValue:", typeof coda.makeParameterValue);
+// If the harness hasn’t wired up g.makeParameterValue, override it locally:
+coda.makeParameterValue = ({formula}) => ({
+  type: "ParameterValue",
+  formula,
+});
+
 
 // 2) Import your schemas exactly once
 const { TaskSchema, ResponseSchema } = require("./schemas");
@@ -58,7 +65,10 @@ pack.addSyncTable({
         type: coda.ParameterType.String,
         name: "docId",
         description: "The Coda document ID to sync. This is typically set automatically.",
-        suggestedValue: "=AIAppCodaSync.CurrentDocumentId()",
+        suggestedValue: {
+          type: "ParameterValue",
+          formula: "CurrentDocumentId",
+          },
       }),
     ],
     // Full-sync
@@ -91,7 +101,10 @@ pack.addSyncTable({
         type: coda.ParameterType.String,
         name: "docId",
         description: "The Coda document ID to sync. This is typically set automatically.",
-        suggestedValue: "=AIAppCodaSync.CurrentDocumentId()",
+        suggestedValue: {
+          type: "ParameterValue",
+          formula: "CurrentDocumentId",
+          },
       }),
     ],
     execute: async function([docId], context) {
