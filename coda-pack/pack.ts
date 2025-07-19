@@ -55,7 +55,7 @@ pack.addSyncTable({
         type: coda.ParameterType.String,
         name: "docId",
         description: "The Coda document ID to sync. This is typically set automatically.",
-        suggestedValue: { formula: "CurrentDocumentId" } as any,
+        suggestedValue: "=AIAppCodaSync.CurrentDocumentId()",
       }),
     ],
     // Full-sync
@@ -88,7 +88,7 @@ pack.addSyncTable({
         type: coda.ParameterType.String,
         name: "docId",
         description: "The Coda document ID to sync. This is typically set automatically.",
-        suggestedValue: { formula: "CurrentDocumentId" } as any,
+        suggestedValue: "=AIAppCodaSync.CurrentDocumentId()",
       }),
     ],
     execute: async function([docId], context) {
