@@ -3,6 +3,11 @@
 # ✅ Fully cleaned tracked node_modules
 node_modules/
 
+/AIAppCoda.git
+/bfg.jar
+/AIAppCoda.git.bfg-report/
+
+
 # Build output
 /build
 /dist
