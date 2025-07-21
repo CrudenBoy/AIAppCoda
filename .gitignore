@@ -1,5 +1,6 @@
 # Dependencies
 # ignore any dir named “node_modules” at any depth
+# ✅ Fully cleaned tracked node_modules
 node_modules/
 
 # Build output
